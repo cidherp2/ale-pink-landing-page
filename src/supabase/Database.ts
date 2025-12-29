@@ -101,6 +101,7 @@ export type Database = {
         | "boomplay"
         | "mixcloud"
         | '""'
+        | "tiktok"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -245,6 +246,7 @@ export const Constants = {
         "boomplay",
         "mixcloud",
         '""',
+        "tiktok",
       ],
     },
   },

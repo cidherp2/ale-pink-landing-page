@@ -1,4 +1,6 @@
 import styled from "styled-components"
+import StreamingIcon from "../StreamingIcons";
+import type { Database } from "../supabase/Database";
 
 export const ButtonsContainer = styled.div`
   width: 93%;
@@ -9,6 +11,9 @@ export const ButtonsContainer = styled.div`
   box-sizing: border-box;
   gap: 1rem;
 `;
+
+type StreamingPlatform = Database["public"]["Enums"]["streaming_platform"];
+
 
 export const LinkButton = styled.a`
 box-sizing: border-box;
@@ -60,7 +65,7 @@ const formatPlatformLabel = (platform: string) =>
 
 interface LinkButtonsProps {
     songLink: string;
-    platform: string;
+    platform: StreamingPlatform;
     songTitle: string;
     coverUrl: string;
 }
@@ -69,7 +74,7 @@ const LinkButtons = ({ songLink, platform, songTitle,coverUrl }: LinkButtonsProp
         <ButtonsContainer className="buttons-container">
             <LinkButton href={songLink} target="_blank" className="link-button">
           <IconWrapper >
-            <img src={coverUrl} alt={platform} />
+          <StreamingIcon platform={platform}/>
           </IconWrapper>
          <p>{`${songTitle} - ${formatPlatformLabel(platform)}`}</p>
         </LinkButton>
