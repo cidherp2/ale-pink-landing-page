@@ -1,0 +1,29 @@
+
+[build]
+command = "npm run build"
+publish = "dist"
+
+[build.environment]
+NODE_VERSION = "18"
+NPM_CONFIG_IGNORE_SCRIPTS = "false"
+PNPM_IGNORE_SCRIPTS = "false"
+SHARP_IGNORE_GLOBAL_LIBVIPS = "1"
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
+
+[[headers]]
+for = "/manifest.webmanifest"
+[headers.values]
+Content-Type = "application/manifest+json"
+
+[[headers]]
+for = "/assets/*"
+[headers.values]
+cache-control = '''
+    public,
+    max-age=0,
+    must-revalidate
+    '''
