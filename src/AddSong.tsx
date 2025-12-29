@@ -12,8 +12,7 @@ import {
   SecondaryButton,
   SelectPlatform
 } from "./utils/AddSong.styles";
-import type { Tables, Database } from "./supabase/Database";
-import { data, Navigate } from "react-router-dom";
+import type { Database } from "./supabase/Database";
 import { useNavigate } from "react-router-dom";
 
 type StreamingPlatform = Database["public"]["Enums"]["streaming_platform"];

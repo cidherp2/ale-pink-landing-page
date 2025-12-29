@@ -1,9 +1,7 @@
 import styled from "styled-components";
 import LinkButtons from "./utils/Link-buttons";
-import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "./utils/ClientSupabase";
-import type { Database } from "./supabase/Database";
 import { type Tables } from "./supabase/Database";
 import { useParams } from "react-router-dom";
 
@@ -23,11 +21,8 @@ type SongWithLinks = Tables<"songs"> & {
 };
 const LandingPageContainer = () => {
 
-    const [songLink,setSongLink] = useState<string>("")
     const [songs, setSongs] = useState<SongWithLinks[]>([])
-    const [platform, setPlatform] = useState<string>("")
-    const [songTitle, setSongTitle] = useState<string>("")
-    const urlParams = new URLSearchParams(window.location.search);
+    
     //const songIdParam = urlParams.get('myParam');
     const { id } = useParams();
 
@@ -60,7 +55,7 @@ const LandingPageContainer = () => {
     return (
         <div style={{width:"100%"}}>
         <Container>
-            {songs[0]?.song_links.map((link,index)=>{
+            {songs[0]?.song_links.map((link)=>{
                 return(
                     <LinkButtons
                     songLink={link.url}
