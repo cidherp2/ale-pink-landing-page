@@ -1,6 +1,7 @@
 import styled from "styled-components"
 import StreamingIcon from "../StreamingIcons";
 import type { Database } from "../supabase/Database";
+import { FaPlay } from "react-icons/fa";
 
 export const ButtonsContainer = styled.div`
   width: 93%;
@@ -66,17 +67,25 @@ const formatPlatformLabel = (platform: string) =>
 interface LinkButtonsProps {
     songLink: string;
     platform: StreamingPlatform;
-    songTitle: string;
-    coverUrl: string;
+    songTitle?: string;
+    coverUrl?: string;
 }
-const LinkButtons = ({ songLink, platform, songTitle,coverUrl }: LinkButtonsProps) => {
+const LinkButtons = ({ songLink, platform}: LinkButtonsProps) => {
     return (
         <ButtonsContainer className="buttons-container">
             <LinkButton href={songLink} target="_blank" className="link-button">
           <IconWrapper >
           <StreamingIcon platform={platform}/>
           </IconWrapper>
-         <p>{`${songTitle} - ${formatPlatformLabel(platform)}`}</p>
+          <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%"}}>
+            <div style={{display:"flex", flexDirection:"row", alignItems:"center", gap:"8px",}}>
+         <p>{`${formatPlatformLabel(platform)} `}</p>
+         </div>
+         <div style={{display:"flex",flexDirection:"row", justifyContent:"space-between", width:"50%",alignItems:"center", gap:"4px"}}>
+         <p>Reproducir</p>
+         <p> <FaPlay size={16} /></p>
+         </div>
+         </div>
         </LinkButton>
         </ButtonsContainer>
     )

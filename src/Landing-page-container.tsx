@@ -12,9 +12,17 @@ background: #0d6649;
 display: flex;
 flex-direction: column;
 align-items: center;
-justify-content: center;
+justify-content: flex-start;
 min-height: 100vh;
 gap:1rem;
+`
+const CoverImageContainer = styled.div `
+margin-top: 2rem;
+width: 200px;
+height: 200px;
+border-radius: 12px;
+overflow: hidden;
+box-shadow: 0 6px 12px rgba(0,0,0,0.2);
 `
 type SongWithLinks = Tables<"songs"> & {
   song_links: Tables<"song_links">[];
@@ -55,6 +63,16 @@ const LandingPageContainer = () => {
     return (
         <div style={{width:"100%"}}>
         <Container>
+            <div
+            style={{display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center"}}
+            >
+            <CoverImageContainer>
+                <img src={songs[0]?.cover_url ?? ""} alt="Cover Image" style={{width:"100%", height:"100%", objectFit:"cover"}}/>
+            </CoverImageContainer>
+           
+            <h2 style={{color:"#e6f4ef"}}> {songs[0]?.title}</h2>
+            <p style={{color:"#e6f4ef", marginTop:"-10px"}}>{songs[0]?.artist}</p>  
+             </div>
             {songs[0]?.song_links.map((link)=>{
                 return(
                     <LinkButtons
