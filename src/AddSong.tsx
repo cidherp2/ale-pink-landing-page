@@ -28,9 +28,10 @@ type SongLink = {
 
 type AddSongProps = {
   username: string;
+  userId: string;
 };
 
-export default function AddSong({ username }: AddSongProps) {
+export default function AddSong({ username, userId }: AddSongProps) {
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
   const [links, setLinks] = useState<SongLink[]>([
@@ -84,6 +85,7 @@ export default function AddSong({ username }: AddSongProps) {
       .insert({
         title,
         artist,
+        user_id:userId
       })
       .select()
       .single();

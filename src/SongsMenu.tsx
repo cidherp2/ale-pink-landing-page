@@ -127,6 +127,18 @@ const SongsLinkTreeMenu = (props: SongMenuProps) => {
 
   }, []);
 
+  useEffect(() => {
+  if (!songs.length) return;
+
+  songs.forEach(song => {
+    if (!song.cover_url) return;
+
+    const img = new Image();
+    img.src = song.cover_url;
+  });
+}, [songs]);
+
+
   return (
     <Page>
       <Card>

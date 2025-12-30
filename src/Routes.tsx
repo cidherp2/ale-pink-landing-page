@@ -10,71 +10,83 @@ import type { User } from "@supabase/supabase-js";
 import Profile from "./Profile";
 
 const AppRoutes = () => {
-    
- 
-  
-
-  const [user,setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const getUsernameFromAUthId = async (authId: string) => {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("username")
-    .eq("auth_id", authId)
-    .single();
+  const getUserIdFromAuthId = async (authId: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("auth_id", authId)
+      .single();
 
-  if (error) {
-    console.error("Error fetching username:", error);
-    return null;
-  }
-  console.log("Fetched username:", data?.username);
-  setUsername(data?.username || null);
+    if (error) {
+      console.error("Error fetching user ID:", error);
+      return null;
+    }
+    console.log("Fetched user ID:", data?.id);
+    setUserId(data?.id || null);
 
-  return data?.username || null;
-}
-
-  useEffect(() => {
-  supabase.auth.getSession().then(({ data }) => {
-    setUser(data.session?.user ?? null);
-  });
-
-  const { data: listener } = supabase.auth.onAuthStateChange(
-    (_event, session) => {
-     
-      setUser(session?.user ?? null);
-        getUsernameFromAUthId(session?.user?.id ?? '');
-      }
-    );
-  return () => {
-    listener.subscription.unsubscribe();
+    return data?.id || null;
   };
 
+  const getUsernameFromAUthId = async (authId: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("auth_id", authId)
+      .single();
 
-  
-}, []);
+    if (error) {
+      console.error("Error fetching username:", error);
+      return null;
+    }
+    console.log("Fetched username:", data?.username);
+    setUsername(data?.username || null);
 
+    return data?.username || null;
+  };
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+    });
 
-
-
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+        getUsernameFromAUthId(session?.user?.id ?? "");
+        getUserIdFromAuthId(session?.user?.id ?? "");
+      }
+    );
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   return (
     <Routes>
-      <Route path="alexpink/songs/:id" element={<LandingPageContainer />} />
-      <Route path="profile/:username" element={<Profile
-        />} />
+      <Route
+        path="alexpink/songs/:id"
+        element={<LandingPageContainer />}
+      />
+      <Route path="profile/:username" element={<Profile />} />
       <Route path="login" element={<Login />} />
       <Route element={<AuthGuard />}>
-        <Route path="addsong" element={<AddSong
-          username={username ?? ''}
-        />} />
+        <Route
+          path="addsong"
+          element={<AddSong username={username ?? ""} userId={userId ?? ""} />}
+        />
 
         <Route
           path="alexpink/songs"
-          element={<SongsLinkTreeMenu
-            usrname={username ?? ''}
-            userId={user?.id ?? ''} />}
+          element={
+            <SongsLinkTreeMenu
+              usrname={username ?? ""}
+              userId={user?.id ?? ""}
+            />
+          }
         />
       </Route>
     </Routes>

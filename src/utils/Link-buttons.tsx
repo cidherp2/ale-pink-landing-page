@@ -1,23 +1,43 @@
-import styled from "styled-components"
+import styled, { keyframes } from "styled-components";
 import StreamingIcon from "../StreamingIcons";
 import type { Database } from "../supabase/Database";
 import { FaPlay } from "react-icons/fa";
+
+/* =======================
+   Animations
+======================= */
+
+const fadeUp = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
+/* =======================
+   Styled Components
+======================= */
 
 export const ButtonsContainer = styled.div`
   width: 93%;
   max-width: 420px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  box-sizing: border-box;
   gap: 1rem;
+  box-sizing: border-box;
+
+  > * {
+    opacity: 0;
+    animation: ${fadeUp} 0.1s ease forwards;
+  }
 `;
 
-type StreamingPlatform = Database["public"]["Enums"]["streaming_platform"];
-
-
 export const LinkButton = styled.a`
-box-sizing: border-box;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -31,18 +51,23 @@ box-sizing: border-box;
 
   padding: 14px 18px;
   border-radius: 14px;
-
   min-height: 56px;
 
   box-shadow: 0 6px 0 rgba(0, 0, 0, 0.15);
 
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: 
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.2s ease;
+
+  &:hover {
+    filter: brightness(1.04);
+  }
 
   &:active {
     transform: translateY(3px);
     box-shadow: 0 3px 0 rgba(0, 0, 0, 0.15);
   }
-
 `;
 
 export const IconWrapper = styled.div`
@@ -58,37 +83,83 @@ export const IconWrapper = styled.div`
   }
 `;
 
-const formatPlatformLabel = (platform: string) => 
+/* =======================
+   Types
+======================= */
+
+type StreamingPlatform =
+  Database["public"]["Enums"]["streaming_platform"];
+
+interface LinkButtonsProps {
+  songLink: string;
+  platform: StreamingPlatform;
+  songTitle?: string;
+  coverUrl?: string;
+}
+
+/* =======================
+   Helpers
+======================= */
+
+const formatPlatformLabel = (platform: string) =>
   platform
     .replace(/_/g, " ")
     .replace(/\b\w/g, l => l.toUpperCase());
 
+/* =======================
+   Component
+======================= */
 
-interface LinkButtonsProps {
-    songLink: string;
-    platform: StreamingPlatform;
-    songTitle?: string;
-    coverUrl?: string;
-}
-const LinkButtons = ({ songLink, platform}: LinkButtonsProps) => {
-    return (
-        <ButtonsContainer className="buttons-container">
-            <LinkButton href={songLink} target="_blank" className="link-button">
-          <IconWrapper >
-          <StreamingIcon platform={platform}/>
-          </IconWrapper>
-          <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%"}}>
-            <div style={{display:"flex", flexDirection:"row", alignItems:"center", gap:"8px",}}>
-         <p>{`${formatPlatformLabel(platform)} `}</p>
-         </div>
-         <div style={{display:"flex",flexDirection:"row", justifyContent:"space-between", width:"50%",alignItems:"center", gap:"4px"}}>
-         <p>Reproducir</p>
-         <p> <FaPlay size={16} /></p>
-         </div>
-         </div>
-        </LinkButton>
-        </ButtonsContainer>
-    )
-}
+const LinkButtons = ({
+  songLink,
+  platform,
+}: LinkButtonsProps) => {
+  return (
+    <ButtonsContainer className="buttons-container">
+      <LinkButton
+        href={songLink}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="link-button"
+      >
+        <IconWrapper>
+          <StreamingIcon platform={platform} />
+        </IconWrapper>
 
-export default LinkButtons
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            width: "100%",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <p>{formatPlatformLabel(platform)}</p>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            <p>Reproducir</p>
+            <FaPlay size={16} />
+          </div>
+        </div>
+      </LinkButton>
+    </ButtonsContainer>
+  );
+};
+
+export default LinkButtons;

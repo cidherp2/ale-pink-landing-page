@@ -1,0 +1,55 @@
+<svg
+  width="600"
+  height="600"
+  viewBox="0 0 600 600"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <defs>
+    <!-- Gradient background -->
+    <linearGradient id="bgGradient" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#9ad18b" />
+      <stop offset="100%" stop-color="#6fbf9b" />
+    </linearGradient>
+
+    <!-- Soft grain -->
+    <filter id="noise">
+      <feTurbulence
+        type="fractalNoise"
+        baseFrequency="0.9"
+        numOctaves="2"
+        stitchTiles="stitch"
+      />
+      <feColorMatrix type="saturate" values="0" />
+      <feComponentTransfer>
+        <feFuncA type="table" tableValues="0 0.04" />
+      </feComponentTransfer>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect
+    width="600"
+    height="600"
+    fill="url(#bgGradient)"
+  />
+
+  <!-- Noise overlay -->
+  <rect
+    width="600"
+    height="600"
+    filter="url(#noise)"
+    opacity="0.25"
+  />
+
+  <!-- Subtle center highlight -->
+  <radialGradient id="centerGlow" cx="50%" cy="50%" r="60%">
+    <stop offset="0%" stop-color="#ffffff" stop-opacity="0.12" />
+    <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+  </radialGradient>
+
+  <rect
+    width="600"
+    height="600"
+    fill="url(#centerGlow)"
+  />
+</svg>
