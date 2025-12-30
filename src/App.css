@@ -3,9 +3,12 @@
   margin: 0 auto;
 
   text-align: center;
-  width: 430px;
+  width: 420px;
   box-sizing: border-box;
   overflow-x: hidden; 
+    margin-top: 64px;
+   
+position:relative;
 }
 
 .logo {

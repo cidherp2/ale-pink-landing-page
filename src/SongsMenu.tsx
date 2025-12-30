@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "./utils/ClientSupabase";
 import AddSongButton from "./utils/AddButton";
 import { useNavigate } from "react-router-dom";
-import { ProfileButton } from "./utils/AddButton";
 
 export const Page = styled.div`
   min-height: 100vh;
@@ -157,9 +156,7 @@ const SongsLinkTreeMenu = (props: SongMenuProps) => {
         </SongsList>
       </Card>
       <div style={{display:"flex", gap:"1rem"}}>
-      <ProfileButton
-      username={props.usrname}
-      ></ProfileButton>
+     
       
       <AddSongButton></AddSongButton>
       </div>
