@@ -11,8 +11,7 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-   --bg-primary: #0d6649;
-
+  
 }
 
 a {
@@ -35,7 +34,6 @@ body {
   flex-direction: column;
   align-items: center;
   overflow-x: hidden;
-
 }
 
 h1 {

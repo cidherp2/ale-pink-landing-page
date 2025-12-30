@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import styled from "styled-components";
 
 const AddButton = styled(Link)`
+width:145px;
   margin-top: 24px;
   padding: 16px 20px;
   border-radius: 16px;
@@ -45,11 +46,26 @@ const Icon = styled.span`
   line-height: 1;
 `;
 
+type AddSongButtonProps = {
+  username:string
+}
+
 const AddSongButton = () => {
+
   return (
     <AddButton to="/addsong">
       <Icon>＋</Icon>
       Añadir canción
+    </AddButton>
+  );
+};
+export const ProfileButton:React.FC<AddSongButtonProps> = (props) => {
+  return (
+    <AddButton 
+    style={{left: '24px', right: 'auto'}}
+    to={`/profile/${props.username}`}>
+      <Icon>👨🏻‍💻</Icon>
+      Perfil
     </AddButton>
   );
 };

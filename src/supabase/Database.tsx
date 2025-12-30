@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          auth_id: string | null
+          avatar_url: string | null
+          contact_method: string | null
+          contact_value: string | null
+          created_at: string | null
+          id: string
+          social_links: Json[] | null
+          updated_at: string | null
+          username: string
+        }
+        Insert: {
+          auth_id?: string | null
+          avatar_url?: string | null
+          contact_method?: string | null
+          contact_value?: string | null
+          created_at?: string | null
+          id?: string
+          social_links?: Json[] | null
+          updated_at?: string | null
+          username: string
+        }
+        Update: {
+          auth_id?: string | null
+          avatar_url?: string | null
+          contact_method?: string | null
+          contact_value?: string | null
+          created_at?: string | null
+          id?: string
+          social_links?: Json[] | null
+          updated_at?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
       song_links: {
         Row: {
           created_at: string | null
@@ -57,6 +93,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           title: string
+          user_id: string | null
         }
         Insert: {
           artist: string
@@ -65,6 +102,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           title: string
+          user_id?: string | null
         }
         Update: {
           artist?: string
@@ -73,8 +111,17 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           title?: string
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "songs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

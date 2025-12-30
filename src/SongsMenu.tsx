@@ -4,13 +4,15 @@ import type { Tables } from "./supabase/Database";
 import { useEffect, useState } from "react";
 import { supabase } from "./utils/ClientSupabase";
 import AddSongButton from "./utils/AddButton";
+import { useNavigate } from "react-router-dom";
+import { ProfileButton } from "./utils/AddButton";
 
 export const Page = styled.div`
   min-height: 100vh;
   background: linear-gradient(180deg, #0d6649, #0f3d2e);
   padding: 32px 16px;
   display: flex;
-    flex-direction: column;
+  flex-direction: column;
   align-items: center;
   position: relative;
 `;
@@ -72,21 +74,57 @@ export const Arrow = styled.span`
   font-size: 1.2rem;
 `;
 
-
 type Song = Tables<"songs">;
 
-
-const SongsLinkTreeMenu = () => {
+type SongMenuProps = {
+  userId: string;
+  usrname:string
+};
+const SongsLinkTreeMenu = (props: SongMenuProps) => {
   const [songs, setSongs] = useState<Song[]>([]);
+  const navigate = useNavigate();
+
+  const getUserIdFromAuthId = async (authId: string) => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("auth_id", authId)
+      .single();
+
+    if (error) {
+      console.error("Error fetching user ID:", error);
+      return null;
+    }
+    return data?.id || null;
+  }
+
+  const fetchSongs = async () => {
+    try {
+      if (!props.userId) {
+        navigate("/login");
+        return;
+      }
+      const userId = await getUserIdFromAuthId(props.userId);
+      if (!userId) {
+        navigate("/login");
+        return;
+      }
+      const { data, error } = await supabase
+        .from("songs")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+      if (data){
+        setSongs(data);
+      }
+    } catch (error) {
+      console.error("Error fetching songs:", error);
+    }
+  };
 
   useEffect(() => {
-    supabase
-      .from("songs")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        if (data) setSongs(data);
-      });
+  fetchSongs()
+
   }, []);
 
   return (
@@ -98,7 +136,7 @@ const SongsLinkTreeMenu = () => {
         </Header>
 
         <SongsList>
-          {songs.map(song => (
+          {songs.map((song) => (
             <SongCard key={song.id} to={`/alexpink/songs/${song.id}`}>
               {song.title}
               <Arrow>→</Arrow>
@@ -106,7 +144,13 @@ const SongsLinkTreeMenu = () => {
           ))}
         </SongsList>
       </Card>
+      <div style={{display:"flex", gap:"1rem"}}>
+      <ProfileButton
+      username={props.usrname}
+      ></ProfileButton>
+      
       <AddSongButton></AddSongButton>
+      </div>
     </Page>
   );
 };
