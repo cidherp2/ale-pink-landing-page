@@ -109,7 +109,7 @@ const SongsLinkTreeMenu = (props: SongMenuProps) => {
         navigate("/login");
         return;
       }
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("songs")
         .select("*")
         .eq("user_id", userId)
