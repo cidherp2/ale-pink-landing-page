@@ -10,7 +10,10 @@ import {
   CheckboxLabel,
   Button,
   SecondaryButton,
-  SelectPlatform
+  SelectPlatform,
+  CoverUpload,
+  CoverPreview,
+  HiddenFileInput,
 } from "./utils/AddSong.styles";
 import type { Database } from "./supabase/Database";
 import { useNavigate } from "react-router-dom";
@@ -23,15 +26,19 @@ type SongLink = {
   is_primary?: boolean;
 };
 
-export default function AddSong() {
+type AddSongProps = {
+  username: string;
+};
+
+export default function AddSong({ username }: AddSongProps) {
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
-  const [coverUrl, setCoverUrl] = useState("");
   const [links, setLinks] = useState<SongLink[]>([
-    { platform: "\"\"", url: "", is_primary: true },
+    { platform: '""', url: "", is_primary: true },
   ]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [coverFile, setCoverFile] = useState<File | null>(null);
 
   const tipoStreamingPlatforms = [
     { value: "spotify", label: "Spotify" },
@@ -71,22 +78,34 @@ export default function AddSong() {
 
     setLoading(true);
 
+    // 1️⃣ Crear canción SIN cover aún
     const { data: song, error: songError } = await supabase
       .from("songs")
       .insert({
         title,
         artist,
-        cover_url: coverUrl,
       })
       .select()
       .single();
 
-    if (songError) {
+    if (songError || !song) {
       console.error(songError);
       setLoading(false);
       return;
     }
 
+    // 2️⃣ Subir cover y obtener URL
+    const coverUrl = await uploadCover(song.id);
+
+    // 3️⃣ Guardar cover_url si existe
+    if (coverUrl) {
+      await supabase
+        .from("songs")
+        .update({ cover_url: coverUrl })
+        .eq("id", song.id);
+    }
+
+    // 4️⃣ Insertar links
     const formattedLinks = links
       .filter((l) => l.url)
       .map((l) => ({
@@ -96,20 +115,38 @@ export default function AddSong() {
         is_primary: l.is_primary ?? false,
       }));
 
-    const {  error: linksError } = await supabase
-      .from("song_links")
-      .insert(formattedLinks);
+    await supabase.from("song_links").insert(formattedLinks);
 
-    if (!linksError) {
-      setTitle("");
-      setArtist("");
-      setCoverUrl("");
-      setLinks([{ platform: "apple_music", url: "", is_primary: true }]);
-       navigate(`/alexpink/songs/${song.id}`);
+    // 5️⃣ Reset
+    setTitle("");
+    setArtist("");
+    setCoverFile(null);
+    setLinks([{ platform: "apple_music", url: "", is_primary: true }]);
+
+    navigate(`/alexpink/songs/${song.id}`);
+    setLoading(false);
+  };
+
+  const uploadCover = async (songId: string) => {
+    if (!coverFile) return null;
+
+    const fileExt = coverFile.name.split(".").pop();
+    const filePath = `songs/${username}/${songId}.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from("CoverArt")
+      .upload(filePath, coverFile, {
+        upsert: true,
+      });
+
+    if (error) {
+      console.error("Cover upload error:", error);
+      return null;
     }
 
-   
-    setLoading(false);
+    const { data } = supabase.storage.from("CoverArt").getPublicUrl(filePath);
+
+    return data.publicUrl;
   };
 
   return (
@@ -129,11 +166,27 @@ export default function AddSong() {
           onChange={(e) => setArtist(e.target.value)}
         />
 
-        <Input
-          placeholder="Cover URL"
-          value={coverUrl}
-          onChange={(e) => setCoverUrl(e.target.value)}
-        />
+        <SectionTitle>Cover</SectionTitle>
+
+        <CoverUpload>
+          {coverFile ? "Change cover" : "Upload cover image"}
+          <HiddenFileInput
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              if (e.target.files?.[0]) {
+                setCoverFile(e.target.files[0]);
+              }
+            }}
+          />
+        </CoverUpload>
+
+        {coverFile && (
+          <CoverPreview
+            src={URL.createObjectURL(coverFile)}
+            alt="Cover preview"
+          />
+        )}
 
         <SectionTitle>Links</SectionTitle>
 
@@ -149,7 +202,7 @@ export default function AddSong() {
                 )
               }
             >
-              <option value="" disabled>
+              <option value="" >
                 Select platform
               </option>
 

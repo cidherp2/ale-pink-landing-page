@@ -98,3 +98,42 @@ export const Button = styled.button`
 export const SecondaryButton = styled(Button)`
   background: #b7e4a4;
 `;
+
+export const CoverUpload = styled.label`
+  display: block;
+  width: 100%;
+  padding: 18px;
+  border-radius: 18px;
+  box-sizing: border-box;
+
+  background: var(--bg-card-soft);
+  border: 1px dashed var(--green-soft);
+
+  color: var(--text-muted);
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition: border-color 0.15s ease, background 0.15s ease;
+
+  &:hover {
+    border-color: var(--green-main);
+    background: var(--bg-card);
+  }
+`;
+
+export const HiddenFileInput = styled.input`
+  display: none;
+`;
+
+export const CoverPreview = styled.img`
+  width: 100%;
+  max-width: 160px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 16px;
+  margin: 0 auto;
+  display: block;
+`;

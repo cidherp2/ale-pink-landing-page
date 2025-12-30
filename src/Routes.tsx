@@ -41,6 +41,7 @@ const AppRoutes = () => {
 
   const { data: listener } = supabase.auth.onAuthStateChange(
     (_event, session) => {
+     
       setUser(session?.user ?? null);
         getUsernameFromAUthId(session?.user?.id ?? '');
       }
@@ -48,6 +49,8 @@ const AppRoutes = () => {
   return () => {
     listener.subscription.unsubscribe();
   };
+
+
   
 }, []);
 
@@ -63,7 +66,9 @@ const AppRoutes = () => {
         />} />
       <Route path="login" element={<Login />} />
       <Route element={<AuthGuard />}>
-        <Route path="addsong" element={<AddSong />} />
+        <Route path="addsong" element={<AddSong
+          username={username ?? ''}
+        />} />
 
         <Route
           path="alexpink/songs"
