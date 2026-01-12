@@ -97,6 +97,8 @@ const LandingPageContainer = () => {
               platform={link.platform}
               songTitle={songs[0].title}
               coverUrl={songs[0].cover_url!}
+              songId={link.song_id}
+              artist={songs[0]?.artist}
             ></LinkButtons>
           );
         })}
