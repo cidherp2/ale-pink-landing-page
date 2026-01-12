@@ -122,13 +122,19 @@ const LinkButtons = ({
         target="_blank"
         rel="noopener noreferrer"
         className="link-button"
-        onClick={() => {
+        onClick={(e) => {
+          e.preventDefault();
+
           trackMetaEvent("OutboundMusicClick", {
             artist: artist,
             song_id: songId,
             song_title: songTitle,
             platform: platform,
           });
+
+          setTimeout(() => {
+            window.open(songLink, "_blank", "noopener,noreferrer");
+          }, 150);
         }}
       >
         <IconWrapper>
