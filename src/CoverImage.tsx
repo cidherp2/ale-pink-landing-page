@@ -16,7 +16,7 @@ const Img = styled.img<{ visible: boolean }>`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 22px;
+  //border-radius: 22px;
 
   opacity: ${({ visible }) => (visible ? 1 : 0)};
   transition: opacity 0.45s ease;

@@ -9,6 +9,8 @@
     margin-top: 64px;
    
 position:relative;
+
+
 }
 
 .logo {
@@ -45,4 +47,17 @@ position:relative;
 
 .read-the-docs {
   color: #888;
+}
+
+@media (min-width: 768px) {
+  body {
+      max-width: none;
+  min-width:100vw;
+
+  }
+  #root {
+    max-width: none;
+  min-width: 100vw;
+  overflow: scroll;
+  }
 }
