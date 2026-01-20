@@ -138,7 +138,7 @@ const LinkButtons = ({
         }}
       >
         <IconWrapper>
-          <StreamingIcon platform={platform} />
+          <StreamingIcon platform={platform ==="youtube_music" ? "youtube" : platform} />
         </IconWrapper>
 
         <div
@@ -157,7 +157,7 @@ const LinkButtons = ({
               gap: "8px",
             }}
           >
-            <p>{formatPlatformLabel(platform)}</p>
+            <p>{formatPlatformLabel(platform === "youtube_music" ? "youtube" : platform)}</p>
           </div>
 
           <div

@@ -19,7 +19,7 @@ const Img = styled.img<{ visible: boolean }>`
   //border-radius: 22px;
 
   opacity: ${({ visible }) => (visible ? 1 : 0)};
-  transition: opacity 0.45s ease;
+  transition: opacity 0.15s ease;
 `;
 
 interface CoverImageProps {
