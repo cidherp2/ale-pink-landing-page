@@ -1,3 +1,6 @@
+Need to install the following packages:
+supabase@2.77.0
+Ok to proceed? (y) 
 export type Json =
   | string
   | number
@@ -14,6 +17,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_clicks: {
+        Row: {
+          created_at: string
+          id: number
+          platform_click:
+            | Database["public"]["Enums"]["streaming_platform"]
+            | null
+          song_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          platform_click?:
+            | Database["public"]["Enums"]["streaming_platform"]
+            | null
+          song_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          platform_click?:
+            | Database["public"]["Enums"]["streaming_platform"]
+            | null
+          song_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           auth_id: string | null

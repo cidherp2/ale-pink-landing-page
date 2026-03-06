@@ -56,7 +56,10 @@ export const LinkButton = styled.a`
 
   box-shadow: 0 6px 0 rgba(0, 0, 0, 0.15);
 
-  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.2s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    filter 0.2s ease;
 
   &:hover {
     filter: brightness(1.04);
@@ -82,10 +85,6 @@ export const IconWrapper = styled.div`
   }
 `;
 
-/* =======================
-   Types
-======================= */
-
 type StreamingPlatform = Database["public"]["Enums"]["streaming_platform"];
 
 interface LinkButtonsProps {
@@ -95,18 +94,11 @@ interface LinkButtonsProps {
   coverUrl?: string;
   songId: string;
   artist: string;
+  triggerAd?: () => void;
 }
-
-/* =======================
-   Helpers
-======================= */
 
 const formatPlatformLabel = (platform: string) =>
   platform.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-
-/* =======================
-   Component
-======================= */
 
 const LinkButtons = ({
   songLink,
@@ -114,6 +106,7 @@ const LinkButtons = ({
   songId,
   songTitle,
   artist,
+  triggerAd,
 }: LinkButtonsProps) => {
   return (
     <ButtonsContainer className="buttons-container">
@@ -124,7 +117,7 @@ const LinkButtons = ({
         className="link-button"
         onClick={(e) => {
           e.preventDefault();
-
+          triggerAd?.();
           trackMetaEvent("OutboundMusicClick", {
             artist: artist,
             song_id: songId,
@@ -138,7 +131,9 @@ const LinkButtons = ({
         }}
       >
         <IconWrapper>
-          <StreamingIcon platform={platform ==="youtube_music" ? "youtube" : platform} />
+          <StreamingIcon
+            platform={platform === "youtube_music" ? "youtube" : platform}
+          />
         </IconWrapper>
 
         <div
@@ -157,7 +152,11 @@ const LinkButtons = ({
               gap: "8px",
             }}
           >
-            <p>{formatPlatformLabel(platform === "youtube_music" ? "youtube" : platform)}</p>
+            <p>
+              {formatPlatformLabel(
+                platform === "youtube_music" ? "youtube" : platform,
+              )}
+            </p>
           </div>
 
           <div

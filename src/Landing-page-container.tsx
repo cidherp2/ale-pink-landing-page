@@ -2,9 +2,12 @@ import styled from "styled-components";
 import LinkButtons from "./utils/Link-buttons";
 import { useEffect, useState } from "react";
 import { supabase } from "./utils/ClientSupabase";
-import { type Tables } from "./supabase/Database";
+import { type Database, type Tables } from "./supabase/Database";
 import { useParams } from "react-router-dom";
 import CoverImage from "./CoverImage";
+
+type StreamingPlatform = Database["public"]["Enums"]["streaming_platform"];
+
 
 const Container = styled.div`
   width: 100%;
@@ -59,6 +62,29 @@ const LandingPageContainer = () => {
     }
   };
 
+   const trackAdClick = async (platformClick:StreamingPlatform,songId:string) => {
+    try {
+      const { error } = await supabase
+        .from("ad_clicks")
+        .insert([
+          {
+          platform_click: platformClick,
+          song_id: songId
+          },
+        ]);
+        
+        console.log("Ad click tracked for platform: ", platformClick, "songId: ", songId);
+  
+      if (error) {
+        console.error("Error tracking ad click:", error);
+      }
+    } catch (error) {
+      console.error("Error in trackAdClick:", error);
+    }
+  };
+  
+ 
+
   useEffect(() => {
     if (id) {
       fetchSongs(id);
@@ -106,6 +132,7 @@ const LandingPageContainer = () => {
               coverUrl={songs[0].cover_url!}
               songId={link.song_id}
               artist={songs[0]?.artist}
+              triggerAd={() => trackAdClick(link.platform, link.song_id)}
             ></LinkButtons>
           );
         })}
