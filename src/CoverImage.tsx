@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import styled from "styled-components";
-import defualtCover from "../public/verde.svg"
+import defualtCover from "/verde.svg?url";
 
 const Wrapper = styled.div`
   width: 100%;
@@ -40,20 +40,10 @@ export default function CoverImage({ src }: CoverImageProps) {
   return (
     <Wrapper>
       {/* Default cover */}
-      <Img
-        src={defualtCover}
-        alt="Default cover"
-        visible={!loaded}
-      />
+      <Img src={defualtCover} alt="Default cover" visible={!loaded} />
 
       {/* Real cover */}
-      {src && (
-        <Img
-          src={src}
-          alt="Song cover"
-          visible={loaded}
-        />
-      )}
+      {src && <Img src={src} alt="Song cover" visible={loaded} />}
     </Wrapper>
   );
 }

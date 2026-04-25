@@ -8,7 +8,7 @@ const MenuContainer = styled.div<{ clicado: boolean }>`
   height: ${({ clicado }) => (clicado ? "100vh" : "0vh")};
   background-color: var(--bg-main);
   margin-top: 64px;
-max-width: 420px;
+  max-width: 420px;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -39,7 +39,9 @@ const MenuButton = styled.button`
   cursor: pointer;
 
   box-shadow: 0 6px 0 rgba(0, 0, 0, 0.25);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
 
   &:active {
     transform: translateY(3px);
@@ -58,33 +60,44 @@ type SlidingMenuProps = {
 
 const SlidingMenu = (props: SlidingMenuProps) => {
   const navigate = useNavigate();
-  const [clicked,setClicked] = useState<boolean>(props.clickActivator)
-
+  const [clicked, setClicked] = useState<boolean>(props.clickActivator);
 
   const handleLogout = async () => {
     // aquí va tu supabase.auth.signOut()
-     await supabase.auth.signOut();
+    await supabase.auth.signOut();
     navigate("/login");
   };
 
-  useEffect(()=>{
-setClicked(props.clickActivator)
-  },[props.clickActivator])
-
-   
+  useEffect(() => {
+    setClicked(props.clickActivator);
+  }, [props.clickActivator]);
 
   return (
     <MenuContainer clicado={clicked}>
       <div
-      style={{width:"100%", paddingTop:"2rem", display:"flex", flexDirection:"column", gap:"2rem",alignItems:"center"}}
+        style={{
+          width: "100%",
+          paddingTop: "2rem",
+          display: "flex",
+          flexDirection: "column",
+          gap: "2rem",
+          alignItems: "center",
+        }}
       >
-              <MenuButton
+        <MenuButton
+          onClick={() =>
+            navigate(`/profile/${localStorage.getItem("username")}`)
+          }
+        >
+          Perfil
+        </MenuButton>
 
-              onClick={() => navigate(`/profile/${localStorage.getItem("username")}`)}>Perfil</MenuButton>
+        <MenuButton onClick={() => navigate("/analytics")}>
+          Telemetría
+        </MenuButton>
 
-      <LogoutButton onClick={handleLogout}>Cerrar sesión</LogoutButton>
+        <LogoutButton onClick={handleLogout}>Cerrar sesión</LogoutButton>
       </div>
-
     </MenuContainer>
   );
 };
