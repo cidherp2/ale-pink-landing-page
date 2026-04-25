@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import styled from "styled-components";
-import defualtCover from "/verde.svg?url";
+
+const defualtCover = "/verde.svg";
 
 const Wrapper = styled.div`
   width: 100%;
