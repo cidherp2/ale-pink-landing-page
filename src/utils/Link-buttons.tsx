@@ -3,6 +3,7 @@ import StreamingIcon from "../StreamingIcons";
 import type { Database } from "../supabase/Database";
 import { FaPlay } from "react-icons/fa";
 import { trackMetaEvent } from "./metaPixel";
+import { trackTikTokEvent } from "./tiktokPixel";
 
 /* =======================
    Animations
@@ -119,6 +120,12 @@ const LinkButtons = ({
           e.preventDefault();
           triggerAd?.();
           trackMetaEvent("OutboundMusicClick", {
+            artist: artist,
+            song_id: songId,
+            song_title: songTitle,
+            platform: platform,
+          });
+          trackTikTokEvent("OutboundMusicClick", {
             artist: artist,
             song_id: songId,
             song_title: songTitle,

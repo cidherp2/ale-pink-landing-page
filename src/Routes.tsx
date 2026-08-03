@@ -10,6 +10,7 @@ import type { User } from "@supabase/supabase-js";
 import Profile from "./Profile";
 import Analytics from "./Analytics";
 import Feed from "./Feed";
+import Register from "./Register";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./utils/Navbar";
 
@@ -108,6 +109,8 @@ const AppRoutes = () => {
         <Route path="alexpink/songs/:id" element={<LandingPageContainer />} />
         <Route path="profile/:username" element={<Profile />} />
         <Route path="login" element={<Login />} />
+        <Route path="register" element={<Register />} />
+        <Route path="feed" element={<Feed />} />
         <Route element={<AuthGuard />}>
           <Route
             path="addsong"
@@ -127,7 +130,6 @@ const AppRoutes = () => {
           />
 
           <Route path="analytics" element={<Analytics />} />
-          <Route path="feed" element={<Feed />} />
         </Route>
       </Routes>
     </>

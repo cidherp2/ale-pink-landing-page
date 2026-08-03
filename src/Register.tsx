@@ -48,7 +48,6 @@ const Input = styled.input`
   &::placeholder {
     color: #666;
   }
-
   &:focus {
     outline: 2px solid #0d6649;
   }
@@ -64,7 +63,6 @@ const Button = styled.button`
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
-
   transition:
     transform 0.15s ease,
     opacity 0.15s ease;
@@ -72,11 +70,9 @@ const Button = styled.button`
   &:hover {
     opacity: 0.9;
   }
-
   &:active {
     transform: scale(0.98);
   }
-
   &:disabled {
     opacity: 0.5;
     cursor: default;
@@ -90,7 +86,7 @@ const ErrorText = styled.p`
   text-align: center;
 `;
 
-const RegisterLink = styled.p`
+const LoginLink = styled.p`
   color: #aaa;
   font-size: 0.875rem;
   text-align: center;
@@ -107,37 +103,98 @@ const RegisterLink = styled.p`
   }
 `;
 
-export default function Login() {
+export default function Register() {
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleLogin = async () => {
+  const handleRegister = async () => {
     setError(null);
+
+    if (!username.trim()) {
+      setError("El username es obligatorio.");
+      return;
+    }
+    if (username.trim().length < 3) {
+      setError("El username debe tener al menos 3 caracteres.");
+      return;
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username.trim())) {
+      setError("El username solo puede tener letras, números y guiones bajos.");
+      return;
+    }
+
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    // Verificar que el username no esté tomado
+    const { data: existing } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", username.trim().toLowerCase())
+      .maybeSingle();
+
+    if (existing) {
+      setError("Ese username ya está en uso.");
+      setLoading(false);
+      return;
+    }
+
+    // Crear cuenta en auth
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp(
+      {
+        email: email.trim(),
+        password,
+      },
+    );
+
+    if (signUpError) {
+      setError(signUpError.message);
+      setLoading(false);
+      return;
+    }
+
+    const authId = signUpData.user?.id;
+    if (!authId) {
+      setError("No se pudo crear la cuenta. Intenta de nuevo.");
+      setLoading(false);
+      return;
+    }
+
+    // Crear perfil de fan
+    const { error: profileError } = await supabase.from("profiles").insert({
+      auth_id: authId,
+      username: username.trim().toLowerCase(),
     });
 
-    if (error) {
-      setError(error.message);
-    }
-    if (!error) {
-      navigate("/feed");
+    if (profileError) {
+      setError(
+        "Cuenta creada pero hubo un error al guardar el perfil: " +
+          profileError.message,
+      );
+      setLoading(false);
+      return;
     }
 
+    navigate("/feed");
     setLoading(false);
   };
 
   return (
     <Wrapper>
       <Card>
-        <Title>Bienvenido</Title>
-        <Subtitle>Inicia sesión para gestionar tu música</Subtitle>
+        <Title>Únete</Title>
+        <Subtitle>Crea tu cuenta de fan</Subtitle>
+
+        <Input
+          type="text"
+          placeholder="@username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          autoCapitalize="none"
+        />
 
         <Input
           type="email"
@@ -148,20 +205,20 @@ export default function Login() {
 
         <Input
           type="password"
-          placeholder="Password"
+          placeholder="Contraseña (mínimo 6 caracteres)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <Button onClick={handleLogin} disabled={loading}>
-          {loading ? "Signing in..." : "Sign in"}
+        <Button onClick={handleRegister} disabled={loading}>
+          {loading ? "Creando cuenta..." : "Crear cuenta"}
         </Button>
 
         {error && <ErrorText>{error}</ErrorText>}
 
-        <RegisterLink>
-          ¿Eres fan? <Link to="/register">Crea tu cuenta</Link>
-        </RegisterLink>
+        <LoginLink>
+          ¿Ya tienes cuenta? <Link to="/login">Inicia sesión</Link>
+        </LoginLink>
       </Card>
     </Wrapper>
   );
