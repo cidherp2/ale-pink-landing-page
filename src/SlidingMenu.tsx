@@ -92,6 +92,8 @@ const SlidingMenu = (props: SlidingMenuProps) => {
           Perfil
         </MenuButton>
 
+        <MenuButton onClick={() => navigate("/feed")}>Feed</MenuButton>
+
         <MenuButton onClick={() => navigate("/analytics")}>
           Telemetría
         </MenuButton>

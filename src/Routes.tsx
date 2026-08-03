@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import Profile from "./Profile";
 import Analytics from "./Analytics";
+import Feed from "./Feed";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./utils/Navbar";
 
@@ -126,6 +127,7 @@ const AppRoutes = () => {
           />
 
           <Route path="analytics" element={<Analytics />} />
+          <Route path="feed" element={<Feed />} />
         </Route>
       </Routes>
     </>
