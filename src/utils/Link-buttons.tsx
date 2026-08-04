@@ -132,10 +132,10 @@ const LinkButtons = ({
             platform: platform,
           });
           trackTikTokEvent("ClickButton", {
-            artist: artist,
-            song_id: songId,
-            song_title: songTitle,
-            platform: platform,
+            brand: artist,
+            content_id: songId,
+            content_name: songTitle,
+            content_category: platform,
           });
           
 
