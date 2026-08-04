@@ -131,6 +131,13 @@ const LinkButtons = ({
             song_title: songTitle,
             platform: platform,
           });
+          trackTikTokEvent("ClickButton", {
+            artist: artist,
+            song_id: songId,
+            song_title: songTitle,
+            platform: platform,
+          });
+          
 
           setTimeout(() => {
             window.open(songLink, "_blank", "noopener,noreferrer");
