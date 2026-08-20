@@ -140,6 +140,30 @@ const EmptyRow = styled.td`
   color: var(--text-muted);
 `;
 
+const Pagination = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+`;
+
+const PageButton = styled.button`
+  background: var(--bg-card);
+  color: var(--text-main);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+`;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const PLATFORMS: StreamingPlatform[] = [
@@ -161,26 +185,88 @@ const PLATFORMS: StreamingPlatform[] = [
   "tiktok",
 ];
 
+const PAGE_SIZE = 50;
+
 const Analytics = () => {
   const [clicks, setClicks] = useState<AdClick[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterSong, setFilterSong] = useState<string>("all");
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
+  const [page, setPage] = useState(0);
+  const [totalClicks, setTotalClicks] = useState(0);
+  const [platformCounts, setPlatformCounts] = useState<Record<string, number>>(
+    {},
+  );
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
 
-      const [songsRes, clicksRes] = await Promise.all([
-        supabase.from("songs").select("id, title, artist").order("title"),
-        supabase
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      let clicksQuery = supabase
+        .from("ad_clicks")
+        .select("id, created_at, platform_click, song_id")
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to);
+      let totalQuery = supabase
+        .from("ad_clicks")
+        .select("id", { count: "exact", head: true });
+
+      if (filterSong !== "all") {
+        clicksQuery = clicksQuery.eq("song_id", filterSong);
+        totalQuery = totalQuery.eq("song_id", filterSong);
+      }
+      if (filterPlatform !== "all") {
+        clicksQuery = clicksQuery.eq("platform_click", filterPlatform);
+        totalQuery = totalQuery.eq("platform_click", filterPlatform);
+      }
+
+      const countForPlatform = async (platform: StreamingPlatform | null) => {
+        let query = supabase
           .from("ad_clicks")
-          .select("id, created_at, platform_click, song_id")
-          .order("created_at", { ascending: false }),
+          .select("id", { count: "exact", head: true });
+        if (filterSong !== "all") query = query.eq("song_id", filterSong);
+        if (platform === null) {
+          query = query.is("platform_click", null);
+        } else {
+          query = query.eq("platform_click", platform);
+        }
+        return query;
+      };
+
+      const platformQueries = await Promise.all(
+        [...PLATFORMS, null].map(async (platform) => ({
+          platform,
+          result: await countForPlatform(platform),
+        })),
+      );
+
+      const [songsRes, clicksRes, totalRes] = await Promise.all([
+        supabase.from("songs").select("id, title, artist").order("title"),
+        clicksQuery,
+        totalQuery,
       ]);
 
       if (songsRes.data) setSongs(songsRes.data);
+      setTotalClicks(totalRes.count ?? 0);
+
+      setPlatformCounts(
+        platformQueries.reduce<Record<string, number>>(
+          (acc, { platform, result }) => {
+            if (filterPlatform !== "all" && platform !== filterPlatform) {
+              return acc;
+            }
+            const count = result.count ?? 0;
+            if (count > 0) acc[platform ?? "desconocida"] = count;
+            return acc;
+          },
+          {},
+        ),
+      );
 
       if (clicksRes.data && songsRes.data) {
         const songMap = new Map(
@@ -205,21 +291,9 @@ const Analytics = () => {
     };
 
     fetchData();
-  }, []);
+  }, [filterPlatform, filterSong, page]);
 
-  const filtered = clicks.filter((c) => {
-    const matchSong = filterSong === "all" || c.song_id === filterSong;
-    const matchPlatform =
-      filterPlatform === "all" || c.platform_click === filterPlatform;
-    return matchSong && matchPlatform;
-  });
-
-  // Contar clicks por plataforma (sobre datos filtrados)
-  const platformCounts = filtered.reduce<Record<string, number>>((acc, c) => {
-    const key = c.platform_click ?? "desconocida";
-    acc[key] = (acc[key] ?? 0) + 1;
-    return acc;
-  }, {});
+  const totalPages = Math.ceil(totalClicks / PAGE_SIZE);
 
   const topPlatform =
     Object.entries(platformCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
@@ -231,7 +305,10 @@ const Analytics = () => {
       <FiltersRow>
         <Select
           value={filterSong}
-          onChange={(e) => setFilterSong(e.target.value)}
+          onChange={(e) => {
+            setFilterSong(e.target.value);
+            setPage(0);
+          }}
         >
           <option value="all">Todas las canciones</option>
           {songs.map((s) => (
@@ -243,7 +320,10 @@ const Analytics = () => {
 
         <Select
           value={filterPlatform}
-          onChange={(e) => setFilterPlatform(e.target.value)}
+          onChange={(e) => {
+            setFilterPlatform(e.target.value);
+            setPage(0);
+          }}
         >
           <option value="all">Todas las plataformas</option>
           {PLATFORMS.map((p) => (
@@ -257,7 +337,7 @@ const Analytics = () => {
       <StatsRow>
         <StatCard>
           <p>Total clicks</p>
-          <span>{filtered.length}</span>
+          <span>{totalClicks}</span>
         </StatCard>
         <StatCard>
           <p>Plataforma líder</p>
@@ -290,14 +370,14 @@ const Analytics = () => {
               <tr>
                 <EmptyRow colSpan={5}>Cargando...</EmptyRow>
               </tr>
-            ) : filtered.length === 0 ? (
+            ) : clicks.length === 0 ? (
               <tr>
                 <EmptyRow colSpan={5}>Sin resultados</EmptyRow>
               </tr>
             ) : (
-              filtered.map((c, i) => (
+              clicks.map((c, i) => (
                 <tr key={c.id}>
-                  <td>{i + 1}</td>
+                  <td>{page * PAGE_SIZE + i + 1}</td>
                   <td>
                     {c.song_title ?? (
                       <em style={{ color: "var(--text-muted)" }}>—</em>
@@ -327,6 +407,28 @@ const Analytics = () => {
           </tbody>
         </Table>
       </TableWrapper>
+
+      {totalPages > 0 && (
+        <Pagination>
+          <PageButton
+            type="button"
+            disabled={page === 0 || loading}
+            onClick={() => setPage((current) => current - 1)}
+          >
+            Anterior
+          </PageButton>
+          <span>
+            Página {page + 1} de {totalPages}
+          </span>
+          <PageButton
+            type="button"
+            disabled={page + 1 >= totalPages || loading}
+            onClick={() => setPage((current) => current + 1)}
+          >
+            Siguiente
+          </PageButton>
+        </Pagination>
+      )}
     </Page>
   );
 };
