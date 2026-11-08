@@ -64,12 +64,14 @@ const LandingPageContainer = () => {
 
    const trackAdClick = async (platformClick:StreamingPlatform,songId:string) => {
     try {
+      const createdAt = new Date().toISOString();
       const { error } = await supabase
         .from("ad_clicks")
         .insert([
           {
           platform_click: platformClick,
-          song_id: songId
+          song_id: songId,
+          created_at: createdAt,
           },
         ]);
         

@@ -268,7 +268,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_ad_clicks_summary: {
+        Args: {
+          p_from?: string | null
+          p_platform?: string | null
+          p_song_id?: string | null
+          p_to?: string | null
+        }
+        Returns: {
+          click_count: number
+          platform_click:
+            | Database["public"]["Enums"]["streaming_platform"]
+            | null
+          song_id: string | null
+        }[]
+      }
     }
     Enums: {
       streaming_platform:

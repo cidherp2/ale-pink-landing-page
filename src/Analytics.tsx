@@ -2,6 +2,16 @@ import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { supabase } from "./utils/ClientSupabase";
 import type { Database } from "./supabase/Database";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 type StreamingPlatform = Database["public"]["Enums"]["streaming_platform"];
 
@@ -18,6 +28,27 @@ type Song = {
   id: string;
   title: string;
   artist: string;
+};
+
+type ChartRow = {
+  songId: string;
+  songLabel: string;
+  [platform: string]: string | number;
+};
+
+type AdClickSummary = {
+  song_id: string | null;
+  platform_click: StreamingPlatform | null;
+  click_count: number;
+};
+
+type MatrixRow = ChartRow & {
+  total: number;
+};
+
+type DateFilterableQuery<T> = {
+  gte: (column: string, value: string) => T;
+  lt: (column: string, value: string) => T;
 };
 
 // ─── Styled Components ────────────────────────────────────────────────────────
@@ -52,6 +83,28 @@ const Select = styled.select`
   padding: 0.5rem 0.75rem;
   font-size: 0.9rem;
   cursor: pointer;
+  outline: none;
+
+  &:focus {
+    border-color: var(--green-main);
+  }
+`;
+
+const DateFilter = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-main);
+  font-size: 0.9rem;
+`;
+
+const DateInput = styled.input`
+  background: var(--bg-card);
+  color: var(--text-main);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
   outline: none;
 
   &:focus {
@@ -124,6 +177,70 @@ const Table = styled.table`
   }
 `;
 
+const MatrixCard = styled.section`
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const MatrixWrapper = styled.div`
+  overflow-x: auto;
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+`;
+
+const MatrixTable = styled.table`
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+
+  th,
+  td {
+    padding: 0.7rem 0.75rem;
+    border-bottom: 1px solid var(--border-soft);
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  th {
+    background: var(--bg-card-soft);
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+
+  th:first-child,
+  td:first-child {
+    position: sticky;
+    left: 0;
+    text-align: left;
+    z-index: 1;
+  }
+
+  th:first-child {
+    background: var(--bg-card-soft);
+  }
+
+  td:first-child {
+    background: var(--bg-card);
+    color: var(--text-main);
+    font-weight: 600;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 0;
+  }
+`;
+
+const MatrixTotalCell = styled.td`
+  background: var(--bg-card-soft);
+  color: var(--green-accent);
+  font-weight: 700;
+`;
+
 const PlatformBadge = styled.span`
   background: var(--bg-card-soft);
   color: var(--green-accent);
@@ -164,6 +281,125 @@ const PageButton = styled.button`
   }
 `;
 
+const ChartCard = styled.section`
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const ChartTitle = styled.h2`
+  color: var(--text-main);
+  font-size: 1rem;
+  margin: 0 0 1rem;
+`;
+
+const ChartEmpty = styled.p`
+  color: var(--text-muted);
+  margin: 0;
+  padding: 2rem 0;
+  text-align: center;
+`;
+
+const ErrorBanner = styled.p`
+  background: rgba(227, 107, 107, 0.12);
+  border: 1px solid rgba(227, 107, 107, 0.35);
+  border-radius: 8px;
+  color: #ffb3b3;
+  margin: 0 0 1.5rem;
+  padding: 0.75rem 1rem;
+`;
+
+const DashboardHeader = styled.div`
+  margin-bottom: 1.25rem;
+`;
+
+const Subtitle = styled.p`
+  color: var(--text-muted);
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+`;
+
+const Tabs = styled.div`
+  display: flex;
+  gap: 0.35rem;
+  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 1.5rem;
+`;
+
+const TabButton = styled.button<{ $active: boolean }>`
+  background: ${({ $active }) =>
+    $active ? "var(--bg-card-soft)" : "transparent"};
+  color: ${({ $active }) =>
+    $active ? "var(--green-accent)" : "var(--text-muted)"};
+  border: 0;
+  border-bottom: 2px solid
+    ${({ $active }) => ($active ? "var(--green-main)" : "transparent")};
+  padding: 0.7rem 1rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+`;
+
+const FilterPanel = styled.div`
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const FilterPanelTitle = styled.h2`
+  color: var(--text-main);
+  font-size: 0.95rem;
+  margin: 0 0 0.75rem;
+`;
+
+const SongSelection = styled.div`
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+`;
+
+const SongSelectionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+`;
+
+const SongSelectionActions = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+`;
+
+const SongList = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.5rem;
+  max-height: 180px;
+  overflow-y: auto;
+`;
+
+const SongOption = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-main);
+  background: var(--bg-card-soft);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+`;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const PLATFORMS: StreamingPlatform[] = [
@@ -186,6 +422,66 @@ const PLATFORMS: StreamingPlatform[] = [
 ];
 
 const PAGE_SIZE = 50;
+const CHART_COLORS = [
+  "#79c267",
+  "#4da3d9",
+  "#e8a34a",
+  "#c875d8",
+  "#e36b6b",
+  "#5bc0a8",
+  "#8b91d9",
+  "#d5c45b",
+];
+
+const shiftDateInput = (dateInput: string, days: number) => {
+  const date = new Date(`${dateInput}T00:00:00`);
+  date.setDate(date.getDate() + days);
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+type ChartTooltipProps = {
+  active?: boolean;
+  payload?: Array<{
+    color?: string;
+    name?: string;
+    value?: number;
+  }>;
+  label?: string | number;
+};
+
+const ChartTooltip = ({
+  active,
+  payload,
+  label,
+}: ChartTooltipProps) => {
+  const visiblePayload = payload?.filter((entry) => (entry.value ?? 0) > 0);
+
+  if (!active || !visiblePayload?.length) return null;
+
+  return (
+    <div
+      style={{
+        background: "#0f3b2d",
+        border: "1px solid rgba(111, 211, 177, 0.35)",
+        borderRadius: "8px",
+        color: "#f2f6f4",
+        padding: "0.75rem",
+      }}
+    >
+      <strong>{label}</strong>
+      {visiblePayload.map((entry) => (
+        <div key={entry.name} style={{ color: entry.color, marginTop: 4 }}>
+          {entry.name}: {entry.value ?? 0}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const Analytics = () => {
   const [clicks, setClicks] = useState<AdClick[]>([]);
@@ -193,29 +489,74 @@ const Analytics = () => {
   const [loading, setLoading] = useState(true);
   const [filterSong, setFilterSong] = useState<string>("all");
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
+  const [filterFrom, setFilterFrom] = useState("");
+  const [filterTo, setFilterTo] = useState("");
   const [page, setPage] = useState(0);
   const [totalClicks, setTotalClicks] = useState(0);
   const [platformCounts, setPlatformCounts] = useState<Record<string, number>>(
     {},
   );
+  const [chartData, setChartData] = useState<ChartRow[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedSongIds, setSelectedSongIds] = useState<string[] | null>(null);
+  const [songSearch, setSongSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<
+    "summary" | "comparison" | "detail"
+  >("summary");
+
+  const dateRangeError =
+    filterFrom && filterTo && filterFrom > filterTo
+      ? "La fecha Desde no puede ser posterior a la fecha Hasta."
+      : null;
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setLoadError(null);
+
+      if (dateRangeError) {
+        setClicks([]);
+        setTotalClicks(0);
+        setPlatformCounts({});
+        setChartData([]);
+        setLoading(false);
+        return;
+      }
 
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
+      const fromDate = filterFrom
+        ? new Date(`${filterFrom}T00:00:00`)
+        : null;
+      const toDateExclusive = filterTo
+        ? new Date(`${filterTo}T00:00:00`)
+        : null;
 
-      let clicksQuery = supabase
+      if (toDateExclusive) {
+        toDateExclusive.setDate(toDateExclusive.getDate() + 1);
+      }
+
+      const applyDateFilters = <T extends DateFilterableQuery<T>>(query: T) => {
+        if (fromDate) query = query.gte("created_at", fromDate.toISOString());
+        if (toDateExclusive) {
+          query = query.lt("created_at", toDateExclusive.toISOString());
+        }
+        return query;
+      };
+
+      let clicksQuery = applyDateFilters(
+        supabase
         .from("ad_clicks")
         .select("id, created_at, platform_click, song_id")
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
-        .range(from, to);
-      let totalQuery = supabase
+        .range(from, to),
+      );
+      let totalQuery = applyDateFilters(
+        supabase
         .from("ad_clicks")
-        .select("id", { count: "exact", head: true });
-
+        .select("id", { count: "exact", head: true }),
+      );
       if (filterSong !== "all") {
         clicksQuery = clicksQuery.eq("song_id", filterSong);
         totalQuery = totalQuery.eq("song_id", filterSong);
@@ -225,47 +566,80 @@ const Analytics = () => {
         totalQuery = totalQuery.eq("platform_click", filterPlatform);
       }
 
-      const countForPlatform = async (platform: StreamingPlatform | null) => {
-        let query = supabase
-          .from("ad_clicks")
-          .select("id", { count: "exact", head: true });
-        if (filterSong !== "all") query = query.eq("song_id", filterSong);
-        if (platform === null) {
-          query = query.is("platform_click", null);
-        } else {
-          query = query.eq("platform_click", platform);
-        }
-        return query;
-      };
+      const chartQuery = supabase.rpc("get_ad_clicks_summary", {
+        p_from: fromDate?.toISOString() ?? null,
+        p_to: toDateExclusive?.toISOString() ?? null,
+        p_song_id: filterSong === "all" ? null : filterSong,
+        p_platform: filterPlatform === "all" ? null : filterPlatform,
+      });
 
-      const platformQueries = await Promise.all(
-        [...PLATFORMS, null].map(async (platform) => ({
-          platform,
-          result: await countForPlatform(platform),
-        })),
-      );
-
-      const [songsRes, clicksRes, totalRes] = await Promise.all([
+      const [songsRes, clicksRes, totalRes, chartRes] = await Promise.all([
         supabase.from("songs").select("id, title, artist").order("title"),
         clicksQuery,
         totalQuery,
+        chartQuery,
       ]);
+
+      if (chartRes.error) {
+        console.error("Error loading ad click summary:", chartRes.error);
+        setLoadError(
+          "No se pudo cargar el resumen de clicks. Verifica que la función de agregación de Supabase esté aplicada.",
+        );
+      }
 
       if (songsRes.data) setSongs(songsRes.data);
       setTotalClicks(totalRes.count ?? 0);
 
+      const chartPlatforms =
+        filterPlatform === "all"
+          ? [...PLATFORMS, "desconocida"]
+          : [filterPlatform];
+
+      if (chartRes.data && songsRes.data) {
+        const summaryRows = chartRes.data as AdClickSummary[];
+        const songMap = new Map(
+          songsRes.data.map((song) => [
+            song.id,
+            `${song.title} — ${song.artist}`,
+          ]),
+        );
+        const grouped = new Map<string, ChartRow>();
+
+        summaryRows.forEach((click) => {
+          const songKey = click.song_id ?? "desconocida";
+          const platformKey = click.platform_click ?? "desconocida";
+          const existing = grouped.get(songKey) ?? {
+            songId: songKey,
+            songLabel: click.song_id
+              ? (songMap.get(click.song_id) ?? "Canción desconocida")
+              : "Sin canción",
+          };
+
+          existing[platformKey] =
+            Number(existing[platformKey] ?? 0) + click.click_count;
+          grouped.set(songKey, existing);
+        });
+
+        setChartData(
+          [...grouped.values()].map((row) => {
+            chartPlatforms.forEach((platform) => {
+              row[platform] = Number(row[platform] ?? 0);
+            });
+            return row;
+          }),
+        );
+      } else {
+        setChartData([]);
+      }
+
       setPlatformCounts(
-        platformQueries.reduce<Record<string, number>>(
-          (acc, { platform, result }) => {
-            if (filterPlatform !== "all" && platform !== filterPlatform) {
-              return acc;
-            }
-            const count = result.count ?? 0;
-            if (count > 0) acc[platform ?? "desconocida"] = count;
-            return acc;
-          },
-          {},
-        ),
+        (chartRes.data as AdClickSummary[] | null)?.reduce<
+          Record<string, number>
+        >((acc, row) => {
+          const platform = row.platform_click ?? "desconocida";
+          acc[platform] = (acc[platform] ?? 0) + row.click_count;
+          return acc;
+        }, {}) ?? {},
       );
 
       if (clicksRes.data && songsRes.data) {
@@ -291,18 +665,67 @@ const Analytics = () => {
     };
 
     fetchData();
-  }, [filterPlatform, filterSong, page]);
+  }, [dateRangeError, filterFrom, filterPlatform, filterSong, filterTo, page]);
 
   const totalPages = Math.ceil(totalClicks / PAGE_SIZE);
+  const chartPlatforms =
+    filterPlatform === "all"
+      ? [...PLATFORMS, "desconocida"]
+      : [filterPlatform];
 
   const topPlatform =
     Object.entries(platformCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
+  const visibleChartData =
+    selectedSongIds === null
+      ? chartData
+      : chartData.filter((row) => selectedSongIds.includes(row.songId));
+  const selectableSongs = songs.filter((song) =>
+    `${song.title} ${song.artist}`
+      .toLocaleLowerCase()
+      .includes(songSearch.toLocaleLowerCase()),
+  );
+  const matrixPlatforms = chartPlatforms.filter((platform) =>
+    visibleChartData.some((row) => Number(row[platform] ?? 0) > 0),
+  );
+  const matrixRows: MatrixRow[] = visibleChartData
+    .map((row) => ({
+      ...row,
+      total: matrixPlatforms.reduce(
+        (sum, platform) => sum + Number(row[platform] ?? 0),
+        0,
+      ),
+    }))
+    .sort((a, b) => b.total - a.total);
+  const matrixTotals = matrixPlatforms.reduce<Record<string, number>>(
+    (totals, platform) => {
+      totals[platform] = matrixRows.reduce(
+        (sum, row) => sum + Number(row[platform] ?? 0),
+        0,
+      );
+      return totals;
+    },
+    {},
+  );
+  const matrixMax = Math.max(
+    1,
+    ...matrixRows.flatMap((row) =>
+      matrixPlatforms.map((platform) => Number(row[platform] ?? 0)),
+    ),
+  );
+  const matrixTotal = matrixRows.reduce((sum, row) => sum + row.total, 0);
 
   return (
     <Page>
-      <Title>Telemetría · Ad Clicks</Title>
+      <DashboardHeader>
+        <Title>Telemetría · Ad Clicks</Title>
+        <Subtitle>
+          Monitorea el rendimiento de tus canciones y plataformas desde un solo lugar.
+        </Subtitle>
+      </DashboardHeader>
 
-      <FiltersRow>
+      <FilterPanel>
+        <FilterPanelTitle>Filtros globales</FilterPanelTitle>
+        <FiltersRow>
         <Select
           value={filterSong}
           onChange={(e) => {
@@ -332,9 +755,98 @@ const Analytics = () => {
             </option>
           ))}
         </Select>
-      </FiltersRow>
 
-      <StatsRow>
+        <DateFilter>
+          Desde
+          <DateInput
+            type="date"
+            value={filterFrom}
+            onChange={(e) => {
+              setFilterFrom(e.target.value);
+              setPage(0);
+            }}
+          />
+        </DateFilter>
+
+        <DateFilter>
+          Hasta
+          <DateInput
+            type="date"
+            value={filterTo}
+            onChange={(e) => {
+              setFilterTo(e.target.value);
+              setPage(0);
+            }}
+          />
+        </DateFilter>
+
+        {filterFrom && filterFrom === filterTo && !dateRangeError && (
+          <>
+            <PageButton
+              type="button"
+              onClick={() => {
+                const previousDay = shiftDateInput(filterFrom, -1);
+                setFilterFrom(previousDay);
+                setFilterTo(previousDay);
+                setPage(0);
+              }}
+            >
+              Día anterior
+            </PageButton>
+            <PageButton
+              type="button"
+              onClick={() => {
+                const nextDay = shiftDateInput(filterFrom, 1);
+                setFilterFrom(nextDay);
+                setFilterTo(nextDay);
+                setPage(0);
+              }}
+            >
+              Siguiente día
+            </PageButton>
+          </>
+        )}
+        </FiltersRow>
+      </FilterPanel>
+
+      {dateRangeError && (
+        <p role="alert" style={{ color: "var(--text-muted)" }}>
+          {dateRangeError}
+        </p>
+      )}
+      {loadError && <ErrorBanner role="alert">{loadError}</ErrorBanner>}
+
+      <Tabs role="tablist" aria-label="Secciones de Analytics">
+        <TabButton
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "summary"}
+          $active={activeTab === "summary"}
+          onClick={() => setActiveTab("summary")}
+        >
+          Resumen
+        </TabButton>
+        <TabButton
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "comparison"}
+          $active={activeTab === "comparison"}
+          onClick={() => setActiveTab("comparison")}
+        >
+          Comparativa
+        </TabButton>
+        <TabButton
+          type="button"
+          role="tab"
+          aria-selected={activeTab === "detail"}
+          $active={activeTab === "detail"}
+          onClick={() => setActiveTab("detail")}
+        >
+          Detalle
+        </TabButton>
+      </Tabs>
+
+      {activeTab === "summary" && <StatsRow>
         <StatCard>
           <p>Total clicks</p>
           <span>{totalClicks}</span>
@@ -352,9 +864,197 @@ const Analytics = () => {
               <span>{count}</span>
             </StatCard>
           ))}
-      </StatsRow>
+      </StatsRow>}
 
-      <TableWrapper>
+      {activeTab === "summary" && (
+        <MatrixCard>
+          <ChartTitle>Rendimiento por canción y plataforma</ChartTitle>
+          <Subtitle>
+            Ordenado por total de clicks. La intensidad indica dónde se concentra
+            el rendimiento.
+          </Subtitle>
+          {matrixRows.length === 0 || matrixPlatforms.length === 0 ? (
+            <ChartEmpty>
+              {loading ? "Cargando datos..." : "Sin datos para mostrar"}
+            </ChartEmpty>
+          ) : (
+            <MatrixWrapper>
+              <MatrixTable>
+                <thead>
+                  <tr>
+                    <th>Canción</th>
+                    {matrixPlatforms.map((platform) => (
+                      <th key={platform}>
+                        {platform === "desconocida"
+                          ? "Sin plataforma"
+                          : platform.replace(/_/g, " ")}
+                      </th>
+                    ))}
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrixRows.map((row) => (
+                    <tr key={row.songId}>
+                      <td>{row.songLabel}</td>
+                      {matrixPlatforms.map((platform) => {
+                        const value = Number(row[platform] ?? 0);
+                        const intensity = value / matrixMax;
+                        return (
+                          <td
+                            key={platform}
+                            title={`${value} clicks`}
+                            style={{
+                              backgroundColor:
+                                value > 0
+                                  ? `rgba(111, 211, 177, ${0.08 + intensity * 0.48})`
+                                  : undefined,
+                              color:
+                                value > 0
+                                  ? "var(--text-main)"
+                                  : "var(--text-muted)",
+                              fontWeight: value > 0 ? 600 : 400,
+                            }}
+                          >
+                            {value > 0 ? value.toLocaleString("es-MX") : "—"}
+                          </td>
+                        );
+                      })}
+                      <MatrixTotalCell>
+                        {row.total.toLocaleString("es-MX")}
+                      </MatrixTotalCell>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <MatrixTotalCell>Total</MatrixTotalCell>
+                    {matrixPlatforms.map((platform) => (
+                      <MatrixTotalCell key={platform}>
+                        {(matrixTotals[platform] ?? 0).toLocaleString("es-MX")}
+                      </MatrixTotalCell>
+                    ))}
+                    <MatrixTotalCell>{matrixTotal.toLocaleString("es-MX")}</MatrixTotalCell>
+                  </tr>
+                </tfoot>
+              </MatrixTable>
+            </MatrixWrapper>
+          )}
+        </MatrixCard>
+      )}
+
+      {activeTab === "comparison" && (
+        <>
+          <SongSelection>
+            <SongSelectionHeader>
+              <div>
+                <ChartTitle>Seleccionar canciones</ChartTitle>
+                <Subtitle>
+                  Elige qué canciones quieres comparar en el gráfico.
+                </Subtitle>
+              </div>
+              <SongSelectionActions>
+                <PageButton
+                  type="button"
+                  onClick={() => setSelectedSongIds(null)}
+                >
+                  Seleccionar todas
+                </PageButton>
+                <PageButton
+                  type="button"
+                  onClick={() => setSelectedSongIds([])}
+                >
+                  Limpiar
+                </PageButton>
+              </SongSelectionActions>
+            </SongSelectionHeader>
+            <DateInput
+              type="search"
+              placeholder="Buscar canción o artista"
+              aria-label="Buscar canción o artista"
+              value={songSearch}
+              onChange={(event) => setSongSearch(event.target.value)}
+              style={{ width: "100%", boxSizing: "border-box", marginBottom: "0.75rem" }}
+            />
+            <SongList>
+              {selectableSongs.map((song) => {
+                const checked =
+                  selectedSongIds === null || selectedSongIds.includes(song.id);
+                return (
+                  <SongOption key={song.id}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        if (selectedSongIds === null) {
+                          setSelectedSongIds(
+                            songs.filter((item) => item.id !== song.id).map((item) => item.id),
+                          );
+                        } else if (checked) {
+                          setSelectedSongIds(
+                            selectedSongIds.filter((id) => id !== song.id),
+                          );
+                        } else {
+                          setSelectedSongIds([...selectedSongIds, song.id]);
+                        }
+                      }}
+                    />
+                    <span>{song.title} — {song.artist}</span>
+                  </SongOption>
+                );
+              })}
+            </SongList>
+          </SongSelection>
+
+          <ChartCard>
+            <ChartTitle>Clicks por canción y plataforma</ChartTitle>
+            {visibleChartData.length === 0 ? (
+          <ChartEmpty>
+                {loading
+                  ? "Cargando datos..."
+                  : selectedSongIds?.length === 0
+                    ? "Selecciona al menos una canción."
+                    : "Sin datos para mostrar"}
+              </ChartEmpty>
+            ) : (
+              <ResponsiveContainer width="100%" height={360}>
+                <BarChart
+                  data={visibleChartData}
+              margin={{ top: 8, right: 24, left: 0, bottom: 56 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-soft)" />
+                  <XAxis
+                    dataKey="songLabel"
+                    angle={-35}
+                    textAnchor="end"
+                    interval={0}
+                    height={80}
+                    tick={{ fill: "var(--text-muted)", fontSize: 11 }}
+                  />
+                  <YAxis allowDecimals={false} tick={{ fill: "var(--text-muted)" }} />
+                  <Tooltip content={<ChartTooltip />} cursor={false} />
+                  <Legend />
+                  {chartPlatforms.map((platform, index) => (
+                    <Bar
+                      key={platform}
+                      dataKey={platform}
+                      name={
+                        platform === "desconocida"
+                          ? "Sin plataforma"
+                          : platform.replace(/_/g, " ")
+                      }
+                      stackId="platforms"
+                      fill={CHART_COLORS[index % CHART_COLORS.length]}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+        </>
+      )}
+
+      {activeTab === "detail" && <TableWrapper>
         <Table>
           <thead>
             <tr>
@@ -406,9 +1106,9 @@ const Analytics = () => {
             )}
           </tbody>
         </Table>
-      </TableWrapper>
+      </TableWrapper>}
 
-      {totalPages > 0 && (
+      {activeTab === "detail" && totalPages > 0 && (
         <Pagination>
           <PageButton
             type="button"
