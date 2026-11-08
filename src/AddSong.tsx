@@ -38,6 +38,8 @@ export default function AddSong({ username, userId }: AddSongProps) {
     { platform: '""', url: "", is_primary: true },
   ]);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [createdSongId, setCreatedSongId] = useState<string | null>(null);
   const navigate = useNavigate();
   const [coverFile, setCoverFile] = useState<File | null>(null);
 
@@ -63,20 +65,20 @@ export default function AddSong({ username, userId }: AddSongProps) {
     setLinks([...links, { platform: "spotify", url: "" }]);
   };
 
-  const handleChangeLink = (
+  const handleChangeLink = <K extends keyof SongLink,>(
     index: number,
-    field: keyof SongLink,
-    value: string | boolean
+    field: K,
+    value: SongLink[K],
   ) => {
     const updated = [...links];
-    // @ts-ignore
-    updated[index][field] = value;
+    updated[index] = { ...updated[index], [field]: value };
     setLinks(updated);
   };
 
   const handleSubmit = async () => {
     if (!title || !artist) return alert("Title and artist required");
 
+    setSubmitError(null);
     setLoading(true);
 
     // 1️⃣ Crear canción SIN cover aún
@@ -91,20 +93,35 @@ export default function AddSong({ username, userId }: AddSongProps) {
       .single();
 
     if (songError || !song) {
-      console.error(songError);
+      console.error("Error creating song:", songError);
+      setSubmitError("No se pudo crear la canción.");
       setLoading(false);
       return;
     }
+    setCreatedSongId(song.id);
 
     // 2️⃣ Subir cover y obtener URL
-    const coverUrl = await uploadCover(song.id);
+    const coverResult = await uploadCover(song.id);
+    if (coverResult.error) {
+      console.error("Cover upload error:", coverResult.error);
+      setSubmitError("La canción se creó, pero no se pudo subir la portada. No vuelvas a guardarla para evitar duplicados.");
+      setLoading(false);
+      return;
+    }
+    const coverUrl = coverResult.url;
 
     // 3️⃣ Guardar cover_url si existe
     if (coverUrl) {
-      await supabase
+      const { error } = await supabase
         .from("songs")
         .update({ cover_url: coverUrl })
         .eq("id", song.id);
+      if (error) {
+        console.error("Error saving cover:", error);
+        setSubmitError("La canción se creó, pero no se pudo asociar la portada. No vuelvas a guardarla para evitar duplicados.");
+        setLoading(false);
+        return;
+      }
     }
 
     // 4️⃣ Insertar links
@@ -117,7 +134,15 @@ export default function AddSong({ username, userId }: AddSongProps) {
         is_primary: l.is_primary ?? false,
       }));
 
-    await supabase.from("song_links").insert(formattedLinks);
+    if (formattedLinks.length > 0) {
+      const { error } = await supabase.from("song_links").insert(formattedLinks);
+      if (error) {
+        console.error("Error saving song links:", error);
+        setSubmitError("La canción se creó, pero no se pudieron guardar sus enlaces. No vuelvas a guardarla para evitar duplicados.");
+        setLoading(false);
+        return;
+      }
+    }
 
     // 5️⃣ Reset
     setTitle("");
@@ -125,12 +150,12 @@ export default function AddSong({ username, userId }: AddSongProps) {
     setCoverFile(null);
     setLinks([{ platform: "apple_music", url: "", is_primary: true }]);
 
-    navigate(`/alexpink/songs/${song.id}`);
+    navigate(`/u/${encodeURIComponent(username)}/songs/${song.id}`);
     setLoading(false);
   };
 
   const uploadCover = async (songId: string) => {
-    if (!coverFile) return null;
+    if (!coverFile) return { url: null, error: null };
 
     const fileExt = coverFile.name.split(".").pop();
     const filePath = `songs/${username}/${songId}.${fileExt}`;
@@ -142,13 +167,12 @@ export default function AddSong({ username, userId }: AddSongProps) {
       });
 
     if (error) {
-      console.error("Cover upload error:", error);
-      return null;
+      return { url: null, error };
     }
 
     const { data } = supabase.storage.from("CoverArt").getPublicUrl(filePath);
 
-    return data.publicUrl;
+    return { url: data.publicUrl, error: null };
   };
 
   return (
@@ -234,7 +258,11 @@ export default function AddSong({ username, userId }: AddSongProps) {
 
         <SecondaryButton onClick={handleAddLink}>+ Add link</SecondaryButton>
 
-        <Button onClick={handleSubmit} disabled={loading}>
+        {submitError && <p role="alert">{submitError}</p>}
+        {createdSongId && submitError && (
+          <p>La canción creada aparece en <a href="/songs">tus canciones</a>.</p>
+        )}
+        <Button onClick={handleSubmit} disabled={loading || Boolean(createdSongId)}>
           {loading ? "Saving..." : "Save song"}
         </Button>
       </Container>

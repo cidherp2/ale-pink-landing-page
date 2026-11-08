@@ -2,7 +2,7 @@ import styled from "styled-components";
 import { FiMenu } from "react-icons/fi";
 import SlidingMenu from "../SlidingMenu";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useIsolatedNavigate } from "./legacyPixels";
 import useBodyClick from "../UseBodyClick";
 import { useRef } from "react";
 
@@ -64,9 +64,9 @@ const MenuButton = styled.button`
   }
 `;
 
-const Navbar = () => {
+const Navbar = ({ username }: { username: string | null }) => {
   const [clicked, setClicked] = useState<boolean>(false);
-  const navigate = useNavigate();
+  const navigate = useIsolatedNavigate();
   const menuButtonRef = useRef<HTMLButtonElement>(null)
 
   const handleClick = () => {
@@ -79,14 +79,14 @@ const Navbar = () => {
 
   return (
     <>
-      <SlidingMenu clickActivator={clicked}></SlidingMenu>
+      <SlidingMenu clickActivator={clicked} username={username}></SlidingMenu>
         <Nav>
           <Brand
             onClick={() =>
-              navigate(`/alexpink/songs`)
+              navigate("/songs")
             }
           >
-            {localStorage.getItem("username")?.toString()}
+            {username ?? "Mi cuenta"}
           </Brand>
 
           <MenuButton

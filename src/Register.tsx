@@ -109,10 +109,12 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handleRegister = async () => {
     setError(null);
+    setSuccess(null);
 
     if (!username.trim()) {
       setError("El username es obligatorio.");
@@ -130,11 +132,18 @@ export default function Register() {
     setLoading(true);
 
     // Verificar que el username no esté tomado
-    const { data: existing } = await supabase
+    const { data: existing, error: lookupError } = await supabase
       .from("profiles")
       .select("id")
       .eq("username", username.trim().toLowerCase())
       .maybeSingle();
+
+    if (lookupError) {
+      console.error("Error checking username:", lookupError);
+      setError("No se pudo verificar el username. Intenta de nuevo.");
+      setLoading(false);
+      return;
+    }
 
     if (existing) {
       setError("Ese username ya está en uso.");
@@ -147,6 +156,9 @@ export default function Register() {
       {
         email: email.trim(),
         password,
+        options: {
+          data: { username: username.trim().toLowerCase() },
+        },
       },
     );
 
@@ -156,29 +168,18 @@ export default function Register() {
       return;
     }
 
-    const authId = signUpData.user?.id;
-    if (!authId) {
+    if (!signUpData.user) {
       setError("No se pudo crear la cuenta. Intenta de nuevo.");
       setLoading(false);
       return;
     }
 
-    // Crear perfil de fan
-    const { error: profileError } = await supabase.from("profiles").insert({
-      auth_id: authId,
-      username: username.trim().toLowerCase(),
-    });
-
-    if (profileError) {
-      setError(
-        "Cuenta creada pero hubo un error al guardar el perfil: " +
-          profileError.message,
-      );
-      setLoading(false);
-      return;
+    if (!signUpData.session) {
+      setSuccess("Revisa tu correo para confirmar tu cuenta antes de iniciar sesión.");
+    } else {
+      navigate("/songs");
     }
 
-    navigate("/feed");
     setLoading(false);
   };
 
@@ -215,6 +216,7 @@ export default function Register() {
         </Button>
 
         {error && <ErrorText>{error}</ErrorText>}
+        {success && <p role="status">{success}</p>}
 
         <LoginLink>
           ¿Ya tienes cuenta? <Link to="/login">Inicia sesión</Link>

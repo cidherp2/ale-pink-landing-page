@@ -1,191 +1,124 @@
-import { Navigate, Routes, Route } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
 import LandingPageContainer from "./Landing-page-container";
 import AddSong from "./AddSong";
 import SongsLinkTreeMenu from "./SongsMenu";
 import Login from "./Login";
 import AuthGuard from "./utils/AuthGuard";
 import { supabase } from "./utils/ClientSupabase";
-import { useEffect, useState } from "react";
-import type { User } from "@supabase/supabase-js";
 import Profile from "./Profile";
 import Analytics from "./Analytics";
 import Feed from "./Feed";
 import Register from "./Register";
-import { useNavigate } from "react-router-dom";
 import Navbar from "./utils/Navbar";
 
-interface HomeRedirectProps {
-  authenticated: boolean;
-  loading: boolean;
-}
-
-const HomeRedirect = ({ authenticated, loading }: HomeRedirectProps) => {
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  return (
-    <Navigate
-      to={authenticated ? "/alexpink/songs" : "/login"}
-      replace
-    />
-  );
+type ProfileResult = {
+  authId: string;
+  profile: { id: string; username: string } | null;
+  error: string | null;
 };
 
 const AppRoutes = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [username, setUsername] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [authUser, setAuthUser] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState(true);
-  const nav = useNavigate();
-
-  const getUserIdFromAuthId = async (authId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("auth_id", authId)
-      .single();
-
-    if (error) {
-      console.error("Error fetching user ID:", error);
-      return null;
-    }
-    console.log("Fetched user ID:", data?.id);
-    setUserId(data?.id || null);
-
-    return data?.id || null;
-  };
-
-  const getUsernameFromAUthId = async (authId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("username")
-      .eq("auth_id", authId)
-      .single();
-
-    if (error) {
-      console.error("Error fetching username:", error);
-      return null;
-    }
-    console.log("Fetched username:", data?.username);
-    setUsername(data?.username || null);
-    localStorage.setItem("username", data?.username);
-
-    return data?.username || null;
-  };
+  const [profileResult, setProfileResult] = useState<ProfileResult | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data) {
-        setUser(data.session?.user ?? null);
-        setAuthUser(Boolean(data.session?.user));
-      }
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
       setAuthLoading(false);
     });
+    return () => listener.subscription.unsubscribe();
+  }, []);
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (session) {
-          setUser(session?.user ?? null);
-          getUsernameFromAUthId(session?.user?.id ?? "");
-          getUserIdFromAuthId(session?.user?.id ?? "");
-        }
-        if (!session) {
-          setAuthUser(false);
-        }
-        setAuthLoading(false);
-      },
-    );
-    return () => {
-      listener.subscription.unsubscribe();
+  const authId = user?.id;
+  useEffect(() => {
+    if (!authId) return;
+    let active = true;
+
+    const loadProfile = async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, username")
+        .eq("auth_id", authId)
+        .maybeSingle();
+      if (!active) return;
+      if (error) console.error("Error fetching profile:", error);
+      setProfileResult({
+        authId,
+        profile: data,
+        error: error
+          ? "No se pudo cargar tu perfil. Intenta de nuevo."
+          : data
+            ? null
+            : "Tu cuenta no tiene un perfil asociado. Contacta al administrador.",
+      });
     };
-  }, [nav]);
+    void loadProfile();
+    return () => {
+      active = false;
+    };
+  }, [authId]);
 
   useEffect(() => {
     const root = document.querySelector<HTMLDivElement>("#root");
-    if (!authUser) {
-      if (root) {
-        root.style.marginTop = "0";
-      }
-    } else {
-      if (root) {
-        root.style.marginTop = "64px";
-      }
+    if (root) root.style.marginTop = user ? "64px" : "0";
+  }, [user]);
+
+  const currentProfile =
+    authId && profileResult?.authId === authId ? profileResult : null;
+  const authenticated = Boolean(user);
+  const redirect = authLoading ? (
+    <div>Cargando...</div>
+  ) : (
+    <Navigate to={authenticated ? "/songs" : "/login"} replace />
+  );
+  const profileContent = (render: (profile: NonNullable<ProfileResult["profile"]>) => ReactNode) => {
+    if (!currentProfile) return <div>Cargando perfil...</div>;
+    if (currentProfile.error || !currentProfile.profile) {
+      return <div role="alert">{currentProfile.error}</div>;
     }
-  }, [authUser]);
+    return render(currentProfile.profile);
+  };
+
   return (
     <>
-      {authUser && <Navbar></Navbar>}
-
+      {user && <Navbar username={currentProfile?.profile?.username ?? null} />}
       <Routes>
-        <Route
-          path="/"
-          element={
-            <HomeRedirect
-              authenticated={authUser}
-              loading={authLoading}
-            />
-          }
-        />
+        <Route path="/" element={redirect} />
         <Route path="alexpink/songs/:id" element={<LandingPageContainer />} />
+        <Route path="u/:username/songs/:id" element={<LandingPageContainer />} />
         <Route path="profile/:username" element={<Profile />} />
-        <Route
-          path="login"
-          element={
-            authLoading ? (
-              <div>Loading...</div>
-            ) : authUser ? (
-              <Navigate to="/alexpink/songs" replace />
-            ) : (
-              <Login />
-            )
-          }
-        />
-        <Route
-          path="register"
-          element={
-            authLoading ? (
-              <div>Loading...</div>
-            ) : authUser ? (
-              <Navigate to="/alexpink/songs" replace />
-            ) : (
-              <Register />
-            )
-          }
-        />
+        <Route path="login" element={authLoading || authenticated ? redirect : <Login />} />
+        <Route path="register" element={authLoading || authenticated ? redirect : <Register />} />
         <Route path="feed" element={<Feed />} />
-        <Route element={<AuthGuard />}>
+        <Route element={<AuthGuard authenticated={authenticated} loading={authLoading} />}>
           <Route
             path="addsong"
-            element={
-              <AddSong username={username ?? ""} userId={userId ?? ""} />
-            }
+            element={profileContent((profile) => (
+              <AddSong key={authId} username={profile.username} userId={profile.id} />
+            ))}
           />
-
           <Route
-            path="alexpink/songs"
-            element={
-              <SongsLinkTreeMenu
-                usrname={username ?? ""}
-                userId={user?.id ?? ""}
-              />
-            }
+            path="songs"
+            element={profileContent((profile) => (
+              <SongsLinkTreeMenu key={authId} userId={profile.id} username={profile.username} />
+            ))}
           />
-
-          <Route path="analytics" element={<Analytics />} />
+          <Route path="alexpink/songs" element={<Navigate to="/songs" replace />} />
+          <Route
+            path="analytics"
+            element={profileContent((profile) => (
+              <Analytics key={authId} profileId={profile.id} />
+            ))}
+          />
         </Route>
-        <Route
-          path="*"
-          element={
-            <HomeRedirect
-              authenticated={authUser}
-              loading={authLoading}
-            />
-          }
-        />
+        <Route path="*" element={redirect} />
       </Routes>
     </>
   );
 };
+
 export default AppRoutes;

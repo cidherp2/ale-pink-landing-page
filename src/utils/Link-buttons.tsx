@@ -96,6 +96,7 @@ interface LinkButtonsProps {
   songId: string;
   artist: string;
   triggerAd?: () => void;
+  marketingEnabled?: boolean;
 }
 
 const formatPlatformLabel = (platform: string) =>
@@ -108,6 +109,7 @@ const LinkButtons = ({
   songTitle,
   artist,
   triggerAd,
+  marketingEnabled = false,
 }: LinkButtonsProps) => {
   return (
     <ButtonsContainer className="buttons-container">
@@ -119,6 +121,7 @@ const LinkButtons = ({
         onClick={(e) => {
           e.preventDefault();
           triggerAd?.();
+          if (marketingEnabled) {
           trackMetaEvent("OutboundMusicClick", {
             artist: artist,
             song_id: songId,
@@ -137,6 +140,7 @@ const LinkButtons = ({
             content_name: songTitle,
             content_category: platform,
           });
+          }
           
 
           setTimeout(() => {

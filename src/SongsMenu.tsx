@@ -4,7 +4,6 @@ import type { Tables } from "./supabase/Database";
 import { useEffect, useState } from "react";
 import { supabase } from "./utils/ClientSupabase";
 import AddSongButton from "./utils/AddButton";
-import { useNavigate } from "react-router-dom";
 
 export const Page = styled.div`
   min-height: 100vh;
@@ -77,54 +76,42 @@ type Song = Tables<"songs">;
 
 type SongMenuProps = {
   userId: string;
-  usrname:string
+  username: string;
 };
-const SongsLinkTreeMenu = (props: SongMenuProps) => {
+const SongsLinkTreeMenu = ({ userId, username }: SongMenuProps) => {
   const [songs, setSongs] = useState<Song[]>([]);
-  const navigate = useNavigate();
-
-  const getUserIdFromAuthId = async (authId: string) => {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("auth_id", authId)
-      .single();
-
-    if (error) {
-      console.error("Error fetching user ID:", error);
-      return null;
-    }
-    return data?.id || null;
-  }
-
-  const fetchSongs = async () => {
-    try {
-      if (!props.userId) {
-        navigate("/login");
-        return;
-      }
-      const userId = await getUserIdFromAuthId(props.userId);
-      if (!userId) {
-        navigate("/login");
-        return;
-      }
-      const { data } = await supabase
-        .from("songs")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-      if (data){
-        setSongs(data);
-      }
-    } catch (error) {
-      console.error("Error fetching songs:", error);
-    }
-  };
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-  fetchSongs()
-
-  }, []);
+    let active = true;
+    const fetchSongs = async () => {
+      const batchSize = 500;
+      const result: Song[] = [];
+      for (let offset = 0; active; offset += batchSize) {
+        const { data, error } = await supabase
+          .from("songs")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(offset, offset + batchSize - 1);
+        if (!active) return;
+        if (error) {
+          console.error("Error fetching songs:", error);
+          setError("No se pudieron cargar tus canciones.");
+          return;
+        }
+        result.push(...data);
+        if (data.length < batchSize) {
+          setSongs(result);
+          setError(null);
+          return;
+        }
+      }
+    };
+    void fetchSongs();
+    return () => { active = false; };
+  }, [userId]);
 
   useEffect(() => {
   if (!songs.length) return;
@@ -147,8 +134,9 @@ const SongsLinkTreeMenu = (props: SongMenuProps) => {
         </Header>
 
         <SongsList>
+          {error && <p role="alert">{error}</p>}
           {songs.map((song) => (
-            <SongCard key={song.id} to={`/alexpink/songs/${song.id}`}>
+            <SongCard key={song.id} to={`/u/${encodeURIComponent(username)}/songs/${song.id}`}>
               {song.title}
               <Arrow>→</Arrow>
             </SongCard>

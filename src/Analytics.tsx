@@ -483,7 +483,7 @@ const ChartTooltip = ({
   );
 };
 
-const Analytics = () => {
+const Analytics = ({ profileId }: { profileId: string }) => {
   const [clicks, setClicks] = useState<AdClick[]>([]);
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
@@ -510,6 +510,8 @@ const Analytics = () => {
       : null;
 
   useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
     const fetchData = async () => {
       setLoading(true);
       setLoadError(null);
@@ -547,15 +549,19 @@ const Analytics = () => {
       let clicksQuery = applyDateFilters(
         supabase
         .from("ad_clicks")
-        .select("id, created_at, platform_click, song_id")
+        .select("id, created_at, platform_click, song_id, songs!inner(user_id)")
+        .eq("songs.user_id", profileId)
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
-        .range(from, to),
+        .range(from, to)
+        .abortSignal(controller.signal),
       );
       let totalQuery = applyDateFilters(
         supabase
         .from("ad_clicks")
-        .select("id", { count: "exact", head: true }),
+        .select("id, songs!inner(user_id)", { count: "exact", head: true })
+        .eq("songs.user_id", profileId)
+        .abortSignal(controller.signal),
       );
       if (filterSong !== "all") {
         clicksQuery = clicksQuery.eq("song_id", filterSong);
@@ -566,39 +572,57 @@ const Analytics = () => {
         totalQuery = totalQuery.eq("platform_click", filterPlatform);
       }
 
-      const chartQuery = supabase.rpc("get_ad_clicks_summary", {
-        p_from: fromDate?.toISOString() ?? null,
-        p_to: toDateExclusive?.toISOString() ?? null,
-        p_song_id: filterSong === "all" ? null : filterSong,
-        p_platform: filterPlatform === "all" ? null : filterPlatform,
-      });
+      const batchSize = 500;
+      const fetchSongs = async () => {
+        const allSongs: Song[] = [];
+        for (let offset = 0; ; offset += batchSize) {
+          const { data, error } = await supabase.from("songs")
+            .select("id, title, artist")
+            .eq("user_id", profileId)
+            .order("id")
+            .range(offset, offset + batchSize - 1)
+            .abortSignal(controller.signal);
+          if (error) throw error;
+          allSongs.push(...data);
+          if (data.length < batchSize) return allSongs;
+        }
+      };
+      const fetchSummary = async () => {
+        const rows: AdClickSummary[] = [];
+        for (let offset = 0; ; offset += batchSize) {
+          const { data, error } = await supabase.rpc("get_ad_clicks_summary", {
+            p_from: fromDate?.toISOString() ?? null,
+            p_to: toDateExclusive?.toISOString() ?? null,
+            p_song_id: filterSong === "all" ? null : filterSong,
+            p_platform: filterPlatform === "all" ? null : filterPlatform,
+          }).range(offset, offset + batchSize - 1)
+            .abortSignal(controller.signal);
+          if (error) throw error;
+          rows.push(...data);
+          if (data.length < batchSize) return rows;
+        }
+      };
 
-      const [songsRes, clicksRes, totalRes, chartRes] = await Promise.all([
-        supabase.from("songs").select("id, title, artist").order("title"),
-        clicksQuery,
-        totalQuery,
-        chartQuery,
+      try {
+      const [songRows, clicksRes, totalRes, summaryRows] = await Promise.all([
+        fetchSongs(), clicksQuery, totalQuery, fetchSummary(),
       ]);
+      if (!active) return;
+      if (clicksRes.error) throw clicksRes.error;
+      if (totalRes.error) throw totalRes.error;
+      if (totalRes.count === null) throw new Error("Missing click count");
 
-      if (chartRes.error) {
-        console.error("Error loading ad click summary:", chartRes.error);
-        setLoadError(
-          "No se pudo cargar el resumen de clicks. Verifica que la función de agregación de Supabase esté aplicada.",
-        );
-      }
-
-      if (songsRes.data) setSongs(songsRes.data);
-      setTotalClicks(totalRes.count ?? 0);
+      setSongs(songRows);
+      setTotalClicks(totalRes.count);
 
       const chartPlatforms =
         filterPlatform === "all"
           ? [...PLATFORMS, "desconocida"]
           : [filterPlatform];
 
-      if (chartRes.data && songsRes.data) {
-        const summaryRows = chartRes.data as AdClickSummary[];
+      {
         const songMap = new Map(
-          songsRes.data.map((song) => [
+          songRows.map((song) => [
             song.id,
             `${song.title} — ${song.artist}`,
           ]),
@@ -628,23 +652,21 @@ const Analytics = () => {
             return row;
           }),
         );
-      } else {
-        setChartData([]);
       }
 
       setPlatformCounts(
-        (chartRes.data as AdClickSummary[] | null)?.reduce<
+        summaryRows.reduce<
           Record<string, number>
         >((acc, row) => {
           const platform = row.platform_click ?? "desconocida";
           acc[platform] = (acc[platform] ?? 0) + row.click_count;
           return acc;
-        }, {}) ?? {},
+        }, {}),
       );
 
-      if (clicksRes.data && songsRes.data) {
+      if (clicksRes.data) {
         const songMap = new Map(
-          songsRes.data.map((s) => [
+          songRows.map((s) => [
             s.id,
             { title: s.title, artist: s.artist },
           ]),
@@ -661,11 +683,25 @@ const Analytics = () => {
         setClicks(enriched);
       }
 
-      setLoading(false);
+      } catch (error) {
+        if (!active) return;
+        console.error("Error loading analytics:", error);
+        setClicks([]);
+        setChartData([]);
+        setPlatformCounts({});
+        setTotalClicks(0);
+        setLoadError("No se pudieron cargar las estadísticas. Verifica la conexión y la configuración de Supabase.");
+      } finally {
+        if (active) setLoading(false);
+      }
     };
 
-    fetchData();
-  }, [dateRangeError, filterFrom, filterPlatform, filterSong, filterTo, page]);
+    void fetchData();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [dateRangeError, filterFrom, filterPlatform, filterSong, filterTo, page, profileId]);
 
   const totalPages = Math.ceil(totalClicks / PAGE_SIZE);
   const chartPlatforms =

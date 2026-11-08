@@ -1,32 +1,6 @@
-import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
-import { supabase } from "./ClientSupabase";
 
-const AuthGuard = () => {
-  const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (!active) return;
-
-      if (error) {
-        console.error("Error fetching user session:", error);
-        setAuthenticated(false);
-      } else {
-        setAuthenticated(Boolean(data.session?.user));
-      }
-
-      setLoading(false);
-    });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
+const AuthGuard = ({ authenticated, loading }: { authenticated: boolean; loading: boolean }) => {
   if (loading) {
     return <div>Loading...</div>;
   }

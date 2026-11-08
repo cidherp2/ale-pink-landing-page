@@ -1,11 +1,11 @@
 import styled from "styled-components";
-import { useNavigate } from "react-router-dom";
+import { useIsolatedNavigate } from "./utils/legacyPixels";
 import { supabase } from "./utils/ClientSupabase";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-const MenuContainer = styled.div<{ clicado: boolean }>`
+const MenuContainer = styled.div<{ $open: boolean }>`
   width: 420px;
-  height: ${({ clicado }) => (clicado ? "100vh" : "0vh")};
+  height: ${({ $open }) => ($open ? "calc(100dvh - 64px)" : "0vh")};
   background-color: var(--bg-main);
   margin-top: 64px;
   max-width: 420px;
@@ -18,7 +18,8 @@ const MenuContainer = styled.div<{ clicado: boolean }>`
 
   position: fixed;
   inset: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   transition: height 0.3s ease-out;
   z-index: 100000;
 `;
@@ -56,24 +57,26 @@ const LogoutButton = styled(MenuButton)`
 
 type SlidingMenuProps = {
   clickActivator: boolean;
+  username: string | null;
 };
 
 const SlidingMenu = (props: SlidingMenuProps) => {
-  const navigate = useNavigate();
-  const [clicked, setClicked] = useState<boolean>(props.clickActivator);
+  const navigate = useIsolatedNavigate();
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
   const handleLogout = async () => {
-    // aquí va tu supabase.auth.signOut()
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Error signing out:", error);
+      setLogoutError("No se pudo cerrar la sesión. Intenta de nuevo.");
+      return;
+    }
+    setLogoutError(null);
     navigate("/login");
   };
 
-  useEffect(() => {
-    setClicked(props.clickActivator);
-  }, [props.clickActivator]);
-
   return (
-    <MenuContainer clicado={clicked}>
+    <MenuContainer $open={props.clickActivator}>
       <div
         style={{
           width: "100%",
@@ -84,13 +87,11 @@ const SlidingMenu = (props: SlidingMenuProps) => {
           alignItems: "center",
         }}
       >
-        <MenuButton
-          onClick={() =>
-            navigate(`/profile/${localStorage.getItem("username")}`)
-          }
-        >
-          Perfil
-        </MenuButton>
+        {props.username && (
+          <MenuButton onClick={() => navigate(`/profile/${encodeURIComponent(props.username ?? "")}`)}>
+            Perfil
+          </MenuButton>
+        )}
 
         <MenuButton onClick={() => navigate("/feed")}>Feed</MenuButton>
 
@@ -99,6 +100,7 @@ const SlidingMenu = (props: SlidingMenuProps) => {
         </MenuButton>
 
         <LogoutButton onClick={handleLogout}>Cerrar sesión</LogoutButton>
+        {logoutError && <p role="alert">{logoutError}</p>}
       </div>
     </MenuContainer>
   );

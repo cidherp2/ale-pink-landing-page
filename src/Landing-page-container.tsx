@@ -5,6 +5,7 @@ import { supabase } from "./utils/ClientSupabase";
 import { type Database, type Tables } from "./supabase/Database";
 import { useParams } from "react-router-dom";
 import CoverImage from "./CoverImage";
+import { isLegacyPixelOwner, loadLegacyPixels } from "./utils/legacyPixels";
 
 type StreamingPlatform = Database["public"]["Enums"]["streaming_platform"];
 
@@ -37,46 +38,40 @@ type SongWithLinks = Tables<"songs"> & {
 };
 
 const LandingPageContainer = () => {
-  const [songs, setSongs] = useState<SongWithLinks[]>([]);
+  const { id, username } = useParams();
+  const routeKey = JSON.stringify([id, username]);
+  const [result, setResult] = useState<{
+    routeKey: string;
+    songs: SongWithLinks[];
+    error: string | null;
+  } | null>(null);
+  const current = result?.routeKey === routeKey ? result : null;
+  const songs = current?.songs ?? [];
+  const loadError = current?.error ?? null;
+  const ownerId = songs[0]?.user_id;
+  const [marketingReady, setMarketingReady] = useState(false);
 
-  //const songIdParam = urlParams.get('myParam');
-  const { id } = useParams();
-
-  const fetchSongs = async (songId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("songs")
-        .select("* ,song_links(*)")
-        .eq("id", songId);
-
-      if (error) {
-        console.log("Error fetching songs: ", error);
-      }
-      if (data) {
-        console.log("Fetched songs: ", data);
-        setSongs(data);
-      
-      }
-    } catch (error) {
-      console.log("Error fetching songs ", error);
-    }
-  };
+  useEffect(() => {
+    if (!isLegacyPixelOwner(ownerId)) return;
+    let active = true;
+    loadLegacyPixels().then(
+      () => { if (active) setMarketingReady(true); },
+      (error: unknown) => console.error("Error loading marketing pixels:", error),
+    );
+    return () => { active = false; };
+  }, [ownerId]);
 
    const trackAdClick = async (platformClick:StreamingPlatform,songId:string) => {
     try {
-      const createdAt = new Date().toISOString();
       const { error } = await supabase
         .from("ad_clicks")
         .insert([
           {
           platform_click: platformClick,
           song_id: songId,
-          created_at: createdAt,
           },
         ]);
         
-        console.log("Ad click tracked for platform: ", platformClick, "songId: ", songId);
-  
       if (error) {
         console.error("Error tracking ad click:", error);
       }
@@ -88,16 +83,53 @@ const LandingPageContainer = () => {
  
 
   useEffect(() => {
-    if (id) {
-      fetchSongs(id);
-    }
-  }, []);
+    let active = true;
+    const fetchSong = async () => {
+      if (!id) return;
+      let ownerId: string | undefined;
+      if (username) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("username", username)
+          .maybeSingle();
+        if (!active) return;
+        if (error || !data) {
+          if (error) console.error("Error fetching landing owner:", error);
+          setResult({
+            routeKey,
+            songs: [],
+            error: error ? "No se pudo cargar la landing." : "Landing no encontrada.",
+          });
+          return;
+        }
+        ownerId = data.id;
+      }
+      let query = supabase.from("songs").select("*, song_links(*)").eq("id", id);
+      if (ownerId) query = query.eq("user_id", ownerId);
+      const { data, error } = await query;
+      if (!active) return;
+      if (error) {
+        console.error("Error fetching landing:", error);
+        setResult({ routeKey, songs: [], error: "No se pudo cargar la landing." });
+      } else {
+        setResult({
+          routeKey,
+          songs: data,
+          error: data.length ? null : "Landing no encontrada.",
+        });
+      }
+    };
+    void fetchSong();
+    return () => { active = false; };
+  }, [id, username, routeKey]);
 
   return (
     <div style={{ width: "100%" }}>
       <Container
       className="LandingContainerUnique"
       >
+        {loadError && <p role="alert" style={{ color: "#e6f4ef" }}>{loadError}</p>}
         <div
           style={{
             display: "flex",
@@ -128,6 +160,7 @@ const LandingPageContainer = () => {
         {songs[0]?.song_links.map((link) => {
           return (
             <LinkButtons
+              key={link.id}
               songLink={link.url}
               platform={link.platform}
               songTitle={songs[0].title}
@@ -135,6 +168,7 @@ const LandingPageContainer = () => {
               songId={link.song_id}
               artist={songs[0]?.artist}
               triggerAd={() => trackAdClick(link.platform, link.song_id)}
+              marketingEnabled={isLegacyPixelOwner(ownerId) && marketingReady}
             ></LinkButtons>
           );
         })}
