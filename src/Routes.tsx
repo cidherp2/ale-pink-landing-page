@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Navigate, Routes, Route } from "react-router-dom";
 import LandingPageContainer from "./Landing-page-container";
 import AddSong from "./AddSong";
 import SongsLinkTreeMenu from "./SongsMenu";
@@ -14,11 +14,30 @@ import Register from "./Register";
 import { useNavigate } from "react-router-dom";
 import Navbar from "./utils/Navbar";
 
+interface HomeRedirectProps {
+  authenticated: boolean;
+  loading: boolean;
+}
+
+const HomeRedirect = ({ authenticated, loading }: HomeRedirectProps) => {
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <Navigate
+      to={authenticated ? "/alexpink/songs" : "/login"}
+      replace
+    />
+  );
+};
+
 const AppRoutes = () => {
   const [user, setUser] = useState<User | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<boolean>(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const nav = useNavigate();
 
   const getUserIdFromAuthId = async (authId: string) => {
@@ -60,10 +79,9 @@ const AppRoutes = () => {
     supabase.auth.getSession().then(({ data }) => {
       if (data) {
         setUser(data.session?.user ?? null);
-        if (data.session) {
-          setAuthUser(true);
-        }
+        setAuthUser(Boolean(data.session?.user));
       }
+      setAuthLoading(false);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange(
@@ -76,18 +94,13 @@ const AppRoutes = () => {
         if (!session) {
           setAuthUser(false);
         }
+        setAuthLoading(false);
       },
     );
     return () => {
       listener.subscription.unsubscribe();
     };
   }, [nav]);
-
-  useEffect(() => {
-    if (authUser && window.location.pathname === "/login") {
-      nav("/alexpink/songs");
-    }
-  }, [authUser]);
 
   useEffect(() => {
     const root = document.querySelector<HTMLDivElement>("#root");
@@ -106,10 +119,41 @@ const AppRoutes = () => {
       {authUser && <Navbar></Navbar>}
 
       <Routes>
+        <Route
+          path="/"
+          element={
+            <HomeRedirect
+              authenticated={authUser}
+              loading={authLoading}
+            />
+          }
+        />
         <Route path="alexpink/songs/:id" element={<LandingPageContainer />} />
         <Route path="profile/:username" element={<Profile />} />
-        <Route path="login" element={<Login />} />
-        <Route path="register" element={<Register />} />
+        <Route
+          path="login"
+          element={
+            authLoading ? (
+              <div>Loading...</div>
+            ) : authUser ? (
+              <Navigate to="/alexpink/songs" replace />
+            ) : (
+              <Login />
+            )
+          }
+        />
+        <Route
+          path="register"
+          element={
+            authLoading ? (
+              <div>Loading...</div>
+            ) : authUser ? (
+              <Navigate to="/alexpink/songs" replace />
+            ) : (
+              <Register />
+            )
+          }
+        />
         <Route path="feed" element={<Feed />} />
         <Route element={<AuthGuard />}>
           <Route
@@ -131,6 +175,15 @@ const AppRoutes = () => {
 
           <Route path="analytics" element={<Analytics />} />
         </Route>
+        <Route
+          path="*"
+          element={
+            <HomeRedirect
+              authenticated={authUser}
+              loading={authLoading}
+            />
+          }
+        />
       </Routes>
     </>
   );

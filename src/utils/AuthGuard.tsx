@@ -1,37 +1,37 @@
 import { useEffect, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Navigate, Outlet } from "react-router-dom";
 import { supabase } from "./ClientSupabase";
+
 const AuthGuard = () => {
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [authenticated, setAuthenticated] = useState(false);
 
-    useEffect(() => {
-        const checkUser = async () => {
-            const { data, error } = await supabase.auth.getSession();
-            if (error) {
-                console.error("Error fetching user session:", error);
-                navigate("/login");
-            } else {
-                setUser(data?.session?.user || null);
-                setLoading(false);
-                if (location.pathname === "/login") {
-                    navigate("/alexpink/songs");
-                }
-                console.log("hay usuario")
-                if (!data?.session?.user) {
-                    navigate("/login");
-                }
-            }
-        };
-        checkUser();
-    }, [navigate]);
+  useEffect(() => {
+    let active = true;
 
-    if (loading) {
-        return <div>Loading...</div>;
-    }
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!active) return;
 
-    return user ? <Outlet /> : null;
+      if (error) {
+        console.error("Error fetching user session:", error);
+        setAuthenticated(false);
+      } else {
+        setAuthenticated(Boolean(data.session?.user));
+      }
+
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  return authenticated ? <Outlet /> : <Navigate to="/login" replace />;
 };
 
 export default AuthGuard;
